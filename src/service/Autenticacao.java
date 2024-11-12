@@ -16,7 +16,7 @@ public class Autenticacao {
             usuarioDAO = new UsuarioDAO(); // Criação da instância do DAO
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Erro ao inicializar UsuarioDAO", e);
-            // Aqui você pode lançar uma RuntimeException ou outra exceção, caso queira interromper a execução
+            
         }
     }
 
