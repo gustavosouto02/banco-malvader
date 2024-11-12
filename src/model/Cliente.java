@@ -1,11 +1,20 @@
 package model;
 
-public class Cliente extends Usuario{
-	private String senha;
-	
-	
-	@Override
-    public boolean login(String senha){
+import java.time.LocalDate;
+
+public class Cliente extends Usuario {
+    private String senha;  
+    private Conta conta;  
+
+    // Construtor 
+    public Cliente(int id, String nome, String cpf, LocalDate dataNascimento, String telefone, Endereco endereco, String senha, Conta conta) {
+        super(id, nome, cpf, dataNascimento, telefone, endereco); 
+        this.senha = senha;
+        this.conta = conta; 
+    }
+
+    @Override
+    public boolean login(String senha) {
         return this.senha.equals(senha);
     }
 
@@ -13,30 +22,34 @@ public class Cliente extends Usuario{
     public void logout() {
         System.out.println("Cliente " + nome + " deslogado.");
     }
-    
+
     @Override
     public String consultarDados() {
         return "Nome: " + nome + ", CPF: " + cpf;
     }
 
+    // Getter e Setter para a senha, se necessário
+    public String getSenha() {
+        return senha;
+    }
+
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
+    // Getter e Setter para a conta, se necessário
+    public Conta getConta() {
+        return conta;
+    }
+
+    public void setConta(Conta conta) {
+        this.conta = conta;
+    }
     
-    public double consultarSaldo() {
-        return 1000.0;  // saldo fictício
-    }
-
-    public void depositar(double valor){
-        System.out.println("Depositando " + valor + " na conta.");
-    }
-
-    public boolean sacar(double valor){
-        return valor <= 1000.0;  // true se valor <= saldo
-    }
-
-    public String consultarExtrato(){
-        return "Extrato da conta";
-    }
-
-    public double consultarLimite(){
-        return 500.0;  // limite fictício
+ // Método toString() para exibir os dados do Cliente
+    @Override
+    public String toString() {
+        return "Cliente [id=" + id + ", nome=" + nome + ", cpf=" + cpf + ", telefone=" + telefone 
+               + ", endereco=" + endereco + ", conta=" + (conta != null ? conta.getNumeroConta() : "sem conta") + "]";
     }
 }
