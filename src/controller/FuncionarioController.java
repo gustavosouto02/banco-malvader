@@ -1,82 +1,59 @@
 package controller;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
-import DAO.ConnectionFactory;
 import DAO.FuncionarioDAO;
-import model.Endereco;
 import model.Funcionario;
 
 public class FuncionarioController {
-    private FuncionarioDAO funcionarioDAO = new FuncionarioDAO(); 
+    private FuncionarioDAO funcionarioDAO;
 
-    // Métodos de operação do Funcionário
+    public FuncionarioController(FuncionarioDAO funcionarioDAO) {
+        this.funcionarioDAO = funcionarioDAO;
+    }
+
+    public FuncionarioController() {
+        this.funcionarioDAO = new FuncionarioDAO();
+    }
+
     public Funcionario buscarFuncionarioPorId(int id) {
-        Funcionario funcionario = null;
-        String sql = "SELECT * FROM funcionarios WHERE id = ?";
-        
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-             
-            stmt.setInt(1, id); 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    // Agora buscamos a senha real, que estará no banco de dados
-                    String senha = rs.getString("senha");
-
-                    funcionario = new Funcionario(
-                        rs.getInt("id"), 
-                        rs.getString("nome"), 
-                        rs.getString("cpf"), 
-                        rs.getDate("dataNascimento").toLocalDate(),
-                        rs.getString("telefone"),
-                        stringToEndereco(rs.getString("endereco")), 
-                        rs.getString("codigoFuncionario"), 
-                        rs.getString("cargo"), 
-                        senha, 
-                        null, //contaDAO, se necessário
-                        null  // ClienteDAO, se necessário
-                    );
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        validarId(id);
+        Funcionario funcionario = funcionarioDAO.buscarFuncionarioPorId(id);
+        if (funcionario == null) {
+            System.out.println("Funcionário não encontrado para o ID: " + id);
         }
-        
         return funcionario;
     }
-
-
-    private Endereco stringToEndereco(String enderecoString) {
-        String[] enderecoParts = enderecoString.split(","); 
-        if (enderecoParts.length != 6) {
-            throw new IllegalArgumentException("Formato de endereço inválido.");
+    
+    public void cadastrarFuncionario(Funcionario funcionario) {
+        if (funcionario == null || funcionario.getNome() == null || funcionario.getNome().isEmpty()) {
+            System.out.println("Dados inválidos para cadastro de funcionário.");
+            return;
         }
-        return new Endereco(
-            enderecoParts[0].trim(),  // cep
-            enderecoParts[1].trim(),  // local
-            Integer.parseInt(enderecoParts[2].trim()),  // Número da casa
-            enderecoParts[3].trim(),  // Bairro
-            enderecoParts[4].trim(),  // Cidade
-            enderecoParts[5].trim()   // Estado
-        );
+
+        try {
+            funcionarioDAO.salvarFuncionario(funcionario);
+            System.out.println("Funcionário cadastrado com sucesso!");
+        } catch (Exception e) {
+            System.out.println("Erro ao cadastrar funcionário: " + e.getMessage());
+        }
     }
 
+    public void alterarFuncionario(Funcionario funcionario) {
+        if (funcionario == null || funcionario.getId() <= 0) {
+            System.out.println("Dados inválidos para atualização de funcionário.");
+            return;
+        }
 
-	public void alterarDadosFuncionario(Funcionario funcionarioAlterado) {
-        funcionarioDAO.atualizarFuncionario(funcionarioAlterado);
-        System.out.println("Dados do funcionário alterados com sucesso.");
+        try {
+            funcionarioDAO.atualizarFuncionario(funcionario);
+            System.out.println("Funcionário atualizado com sucesso!");
+        } catch (Exception e) {
+            System.out.println("Erro ao atualizar funcionário: " + e.getMessage());
+        }
     }
 
-    public void cadastrarFuncionario(Funcionario novoFuncionario) {
-        funcionarioDAO.salvarFuncionario(novoFuncionario);
-        System.out.println("Funcionário cadastrado com sucesso!");
-    }
-
-    public void gerarRelatorio() {
-        System.out.println("Gerando relatório...");
-        System.out.println("Relatório gerado com sucesso!");
+    private void validarId(int id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException("O ID deve ser um número positivo.");
+        }
     }
 }

@@ -1,16 +1,17 @@
 package model;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
-public class Cliente extends Usuario {
-    private String senha;  
-    private Conta conta;  
+public class Cliente extends Usuario implements Serializable {
+	private static final long serialVersionUID = 1L;
+    private String senha;
+    private Conta conta;
 
-    // Construtor 
     public Cliente(int id, String nome, String cpf, LocalDate dataNascimento, String telefone, Endereco endereco, String senha, Conta conta) {
-        super(id, nome, cpf, dataNascimento, telefone, endereco); 
+        super(id, nome, cpf, dataNascimento, telefone, endereco);
         this.senha = senha;
-        this.conta = conta; 
+        this.conta = conta;
     }
 
     @Override
@@ -25,19 +26,27 @@ public class Cliente extends Usuario {
 
     @Override
     public String consultarDados() {
-        return "Nome: " + nome + ", CPF: " + cpf;
+        return String.format("Cliente: %s, CPF: %s", nome, cpf);
     }
 
-    // Getter e Setter para a senha, se necessário
+    @Override
+    public String toString() {
+        return String.format("Cliente [ID: %d, Nome: %s, CPF: %s, Conta: %s]", id, nome, cpf,
+                (conta != null ? conta.getNumeroConta() : "Sem Conta"));
+    }
+
     public String getSenha() {
         return senha;
     }
 
     public void setSenha(String senha) {
-        this.senha = senha;
+        if (senha != null && senha.length() >= 6) {
+            this.senha = senha;
+        } else {
+            throw new IllegalArgumentException("Senha inválida. A senha deve ter pelo menos 6 caracteres.");
+        }
     }
-
-    // Getter e Setter para a conta, se necessário
+    
     public Conta getConta() {
         return conta;
     }
@@ -45,11 +54,5 @@ public class Cliente extends Usuario {
     public void setConta(Conta conta) {
         this.conta = conta;
     }
-    
- // Método toString() para exibir os dados do Cliente
-    @Override
-    public String toString() {
-        return "Cliente [id=" + id + ", nome=" + nome + ", cpf=" + cpf + ", telefone=" + telefone 
-               + ", endereco=" + endereco + ", conta=" + (conta != null ? conta.getNumeroConta() : "sem conta") + "]";
-    }
 }
+

@@ -8,84 +8,84 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 
 public class ContaDAO {
 
-    // Exemplo de melhoria no método salvarConta
-	public void salvarConta(Conta conta) {
-	    String sql = "INSERT INTO contas (numeroConta, agenciaConta, saldo, clienteId) VALUES (?, ?, ?, ?)";
-	    try (Connection conn = ConnectionFactory.getConnection();
-	         PreparedStatement stmt = conn.prepareStatement(sql)) {
-	        
-	        stmt.setInt(1, conta.getNumeroConta());
-	        stmt.setString(2, conta.getAgenciaConta());
-	        stmt.setDouble(3, conta.getSaldo());
-	        stmt.setInt(4, conta.getCliente().getId());
-	        stmt.executeUpdate();
-	        System.out.println("Conta salva no banco de dados.");
-	    } catch (SQLException e) {
-	        System.out.println("Erro ao salvar a conta: " + e.getMessage());
-	    }
-	}
-
-    // Método para deletar uma conta
-    public void deletarConta(int contaId) {
-        String sql = "DELETE FROM contas WHERE numeroConta = ?";
+    // Salvar nova conta no banco de dados
+    public void salvarConta(Conta conta) throws SQLException {
+        String sql = "INSERT INTO contas (numeroConta, agenciaConta, saldo, clienteId) VALUES (?, ?, ?, ?)";
         Connection conn = null;
         PreparedStatement stmt = null;
-        int rowsAffected = 0;
 
         try {
-            conn = ConnectionFactory.getConnection(); 
+            conn = ConnectionFactory.getConnection();
             stmt = conn.prepareStatement(sql);
 
-            stmt.setInt(1, contaId);
-            rowsAffected = stmt.executeUpdate();
-            
-            if (rowsAffected > 0) {
-                System.out.println("Conta removida do banco de dados.");
-            } else {
-                System.out.println("Conta não encontrada. Não foi possível deletá-la.");
-            }
+            stmt.setInt(1, conta.getNumeroConta());
+            stmt.setString(2, conta.getNumeroAgencia());
+            stmt.setDouble(3, conta.getSaldo());
+            stmt.setInt(4, conta.getCliente().getId());
+
+            stmt.executeUpdate();
+            System.out.println("Conta salva com sucesso.");
         } catch (SQLException e) {
-            System.out.println("Erro ao tentar deletar a conta: " + e.getMessage());
-            e.printStackTrace(); 
+            throw new SQLException("Erro ao salvar a conta: " + e.getMessage(), e);
         } finally {
             DBUtil.closeStatement(stmt);
             DBUtil.closeConnection(conn);
         }
     }
 
-    // Método para buscar uma conta pelo número da conta
-    public Conta buscarContaPorNumero(String numeroConta) {
-        String sql = "SELECT * FROM contas WHERE numeroConta = ?";
-        Conta conta = null;
+    // Deletar uma conta pelo número
+    public void deletarConta(int contaId) throws SQLException {
+        String sql = "DELETE FROM contas WHERE numeroConta = ?";
         Connection conn = null;
         PreparedStatement stmt = null;
-        ResultSet rs = null;
 
         try {
             conn = ConnectionFactory.getConnection();
             stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, contaId);
 
-            stmt.setString(1, numeroConta);
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected == 0) {
+                System.out.println("Conta não encontrada para exclusão.");
+            } else {
+                System.out.println("Conta excluída com sucesso.");
+            }
+        } catch (SQLException e) {
+            throw new SQLException("Erro ao deletar a conta: " + e.getMessage(), e);
+        } finally {
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(conn);
+        }
+    }
+
+    // Buscar uma conta pelo número
+    public Conta buscarContaPorNumero(int numeroConta) throws SQLException {
+        String sql = "SELECT * FROM contas WHERE numeroConta = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        Conta conta = null;
+
+        try {
+            conn = ConnectionFactory.getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, numeroConta);
             rs = stmt.executeQuery();
 
             if (rs.next()) {
-                int clienteId = rs.getInt("clienteId");
-                Cliente cliente = buscarClientePorId(clienteId);
-
+                Cliente cliente = buscarClientePorId(rs.getInt("clienteId"));
                 conta = new Conta(
-                    rs.getInt("numeroConta"),
-                    rs.getString("agenciaConta"),
-                    cliente,
-                    rs.getDouble("saldo")
+                        rs.getInt("numeroConta"),
+                        rs.getString("agenciaConta"),
+                        cliente,
+                        rs.getDouble("saldo")
                 );
-                conta.depositar(rs.getDouble("saldo"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new SQLException("Erro ao buscar a conta: " + e.getMessage(), e);
         } finally {
             DBUtil.closeResultSet(rs);
             DBUtil.closeStatement(stmt);
@@ -95,31 +95,37 @@ public class ContaDAO {
         return conta;
     }
 
-    // Método para atualizar uma conta existente
-    public void atualizarConta(Conta conta) {
+    // Atualizar uma conta existente
+    public void atualizarConta(Conta conta) throws SQLException {
         String sql = "UPDATE contas SET agenciaConta = ?, saldo = ? WHERE numeroConta = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
 
-        try (Connection conn = ConnectionFactory.getConnection(); 
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setString(1, conta.getAgenciaConta());
+        try {
+            conn = ConnectionFactory.getConnection();
+            stmt = conn.prepareStatement(sql);
+
+            stmt.setString(1, conta.getNumeroAgencia());
             stmt.setDouble(2, conta.getSaldo());
             stmt.setInt(3, conta.getNumeroConta());
-            
+
             stmt.executeUpdate();
             System.out.println("Conta atualizada com sucesso.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new SQLException("Erro ao atualizar a conta: " + e.getMessage(), e);
+        } finally {
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(conn);
         }
     }
 
-    // Método auxiliar para buscar o cliente pelo ID
-    private Cliente buscarClientePorId(int clienteId) {
+    // Buscar cliente associado pelo ID
+    private Cliente buscarClientePorId(int clienteId) throws SQLException {
         String sql = "SELECT * FROM clientes WHERE id = ?";
-        Cliente cliente = null;
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
+        Cliente cliente = null;
 
         try {
             conn = ConnectionFactory.getConnection();
@@ -128,33 +134,10 @@ public class ContaDAO {
             rs = stmt.executeQuery();
 
             if (rs.next()) {
-                String nome = rs.getString("nome");
-                String cpf = rs.getString("cpf");
-                LocalDate dataNascimento = rs.getDate("dataNascimento").toLocalDate(); 
-                String telefone = rs.getString("telefone");
-                Endereco endereco = new Endereco(
-                    rs.getString("cep"),
-                    rs.getString("local"),
-                    rs.getInt("numeroCasa"),
-                    rs.getString("bairro"),
-                    rs.getString("cidade"),
-                    rs.getString("estado")
-                );
-                String senha = rs.getString("senha");
-
-                cliente = new Cliente(
-                    clienteId, 
-                    nome,
-                    cpf,
-                    dataNascimento,
-                    telefone,
-                    endereco,
-                    senha,
-                    null
-                );
+                cliente = mapearCliente(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new SQLException("Erro ao buscar o cliente: " + e.getMessage(), e);
         } finally {
             DBUtil.closeResultSet(rs);
             DBUtil.closeStatement(stmt);
@@ -162,5 +145,26 @@ public class ContaDAO {
         }
 
         return cliente;
+    }
+
+    // Mapeamento de ResultSet para objeto Cliente
+    private Cliente mapearCliente(ResultSet rs) throws SQLException {
+        return new Cliente(
+                rs.getInt("id"),
+                rs.getString("nome"),
+                rs.getString("cpf"),
+                rs.getDate("dataNascimento").toLocalDate(),
+                rs.getString("telefone"),
+                new Endereco(
+                        rs.getString("cep"),
+                        rs.getString("local"),
+                        rs.getInt("numeroCasa"),
+                        rs.getString("bairro"),
+                        rs.getString("cidade"),
+                        rs.getString("estado")
+                ),
+                rs.getString("senha"),
+                null // Contas podem ser carregadas separadamente
+        );
     }
 }

@@ -1,34 +1,43 @@
 package model;
 
 import exception.SaldoInsuficienteException;
+import exception.ValorInvalidoException;
 
-public class Conta {
+import java.io.Serializable;
+
+public class Conta implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private int numeroConta;
-    private String agenciaConta;
+    private String numeroAgencia;
     private double saldo;
     private Cliente cliente;
 
     // Construtor da classe Conta
-    public Conta(int numeroConta, String agenciaConta, Cliente cliente, double saldo) {
+    public Conta(int numeroConta, String numeroAgencia, Cliente cliente, double saldo) {
         if (cliente == null) {
             throw new IllegalArgumentException("Cliente não pode ser nulo.");
         }
+        if (saldo < 0) {
+            throw new IllegalArgumentException("Saldo inicial não pode ser negativo.");
+        }
         this.numeroConta = numeroConta;
-        this.agenciaConta = agenciaConta;
-        this.saldo = saldo; 
+        this.numeroAgencia = numeroAgencia;
+        this.saldo = saldo;
         this.cliente = cliente;
     }
 
-    // Métodos para depositar valores na conta
-    public void depositar(double valor) {
-        if (valor > 0) {
-            saldo += valor;
-        } else {
-            System.out.println("Valor de depósito inválido.");
+
+    // Método para depositar valor na conta
+    public void depositar(double valor) throws ValorInvalidoException {
+        if (valor <= 0) {
+            throw new ValorInvalidoException("Valor de depósito deve ser positivo.");
         }
+        saldo += valor;
     }
 
-    // Método para sacar valores da conta com tratamento para saldo insuficiente
+    // Método para sacar valor da conta
     public void sacar(double valor) throws SaldoInsuficienteException {
         if (valor <= saldo) {
             saldo -= valor;
@@ -51,12 +60,12 @@ public class Conta {
         this.numeroConta = numeroConta;
     }
 
-    public String getAgenciaConta() {
-        return agenciaConta;
+    public String getNumeroAgencia() {
+        return numeroAgencia;
     }
 
-    public void setAgenciaConta(String agenciaConta) {
-        this.agenciaConta = agenciaConta;
+    public void setNumeroAgencia(String numeroAgencia) {
+        this.numeroAgencia = numeroAgencia;
     }
 
     public double getSaldo() {
@@ -71,9 +80,10 @@ public class Conta {
         this.cliente = cliente;
     }
 
-    // Representação da conta como string
+    // Sobrescrevendo o método toString para exibir informações da conta
     @Override
     public String toString() {
-        return "Conta [numeroConta=" + numeroConta + ", agenciaConta=" + agenciaConta + ", saldo=" + saldo + ", cliente=" + cliente.getNome() + "]";
+        return "Conta [numeroConta=" + numeroConta + ", numeroAgencia=" + numeroAgencia + 
+               ", saldo=" + saldo + ", cliente=" + (cliente != null ? cliente.getNome() : "Sem nome") + "]";
     }
 }

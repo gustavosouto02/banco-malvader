@@ -1,5 +1,6 @@
 package DAO;
 
+import util.DBUtil;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -7,38 +8,51 @@ import java.sql.SQLException;
 
 public class UsuarioDAO {
 
-    private Connection connection;
+    private static final System.Logger logger = System.getLogger(UsuarioDAO.class.getName());
 
-    // Construtor que propaga a exceção SQLException
-    public UsuarioDAO() throws SQLException {
-        this.connection = ConnectionFactory.getConnection();  // Chama o método estático da classe ConnectionFactory
-    }
-
-    // Método para buscar a senha do usuário no banco de dados
+    // Buscar senha pelo ID do usuário
     public String buscarSenhaPorUsuario(int idUsuario) {
         String sql = "SELECT senha FROM usuarios WHERE id_usuario = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            connection = ConnectionFactory.getConnection();
+            stmt = connection.prepareStatement(sql);
             stmt.setInt(1, idUsuario);
-            ResultSet rs = stmt.executeQuery();
+            rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return rs.getString("senha");  // Retorna a senha (hash) do banco de dados
+                return rs.getString("senha");
             }
         } catch (SQLException e) {
-            e.printStackTrace();  // Loga o erro, mas não interrompe a execução
+            logger.log(System.Logger.Level.ERROR, "Erro ao buscar senha no banco para o usuário: " + idUsuario, e);
+        } finally {
+            DBUtil.closeResultSet(rs);
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(connection);
         }
-        return null;  // Retorna null se não encontrar o usuário ou ocorrer erro
+        return null;
     }
 
-    // Método para salvar a senha (hash) no banco de dados
+    // Atualizar a senha do usuário
     public void salvarSenha(int idUsuario, String senhaHash) {
         String sql = "UPDATE usuarios SET senha = ? WHERE id_usuario = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, senhaHash);  // Define o hash da senha
-            stmt.setInt(2, idUsuario);     // Define o id do usuário
-            stmt.executeUpdate();  // Executa a atualização
+        Connection connection = null;
+        PreparedStatement stmt = null;
+
+        try {
+            connection = ConnectionFactory.getConnection();
+            stmt = connection.prepareStatement(sql);
+            stmt.setString(1, senhaHash);
+            stmt.setInt(2, idUsuario);
+            stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();  // Loga o erro, mas não interrompe a execução
+            logger.log(System.Logger.Level.ERROR, "Erro ao salvar senha para o usuário: " + idUsuario, e);
+        } finally {
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(connection);
         }
     }
 }

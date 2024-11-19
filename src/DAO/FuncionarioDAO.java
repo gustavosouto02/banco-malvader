@@ -1,19 +1,24 @@
 package DAO;
 
-import model.Endereco;
 import model.Funcionario;
-import java.sql.*;
+import model.Endereco;
 import org.mindrot.jbcrypt.BCrypt;
+import util.DBUtil;
+
+import java.sql.*;
 
 public class FuncionarioDAO {
 
-    // Método para salvar o funcionário no banco de dados
     public void salvarFuncionario(Funcionario funcionario) {
-        String senhaHash = BCrypt.hashpw(funcionario.getSenha(), BCrypt.gensalt());
         String sql = "INSERT INTO funcionarios (nome, cpf, dataNascimento, telefone, endereco, cargo, senha) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String senhaHash = BCrypt.hashpw(funcionario.getSenha(), BCrypt.gensalt());
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+
+        try {
+            conn = ConnectionFactory.getConnection();
+            stmt = conn.prepareStatement(sql);
 
             stmt.setString(1, funcionario.getNome());
             stmt.setString(2, funcionario.getCpf());
@@ -21,21 +26,26 @@ public class FuncionarioDAO {
             stmt.setString(4, funcionario.getTelefone());
             stmt.setString(5, enderecoToString(funcionario.getEndereco()));
             stmt.setString(6, funcionario.getCargo());
-            stmt.setString(7, senhaHash); // Armazena a senha hasheada no banco
+            stmt.setString(7, senhaHash);
 
             stmt.executeUpdate();
-            System.out.println("Funcionario " + funcionario.getNome() + " salvo no banco de dados.");
+            System.out.println("Funcionário salvo com sucesso!");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro ao salvar o funcionário: " + e.getMessage());
+        } finally {
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(conn);
         }
     }
 
-    // Método para atualizar o funcionário no banco de dados
     public void atualizarFuncionario(Funcionario funcionario) {
         String sql = "UPDATE funcionarios SET nome = ?, cpf = ?, dataNascimento = ?, telefone = ?, endereco = ?, cargo = ? WHERE id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try {
+            conn = ConnectionFactory.getConnection();
+            stmt = conn.prepareStatement(sql);
 
             stmt.setString(1, funcionario.getNome());
             stmt.setString(2, funcionario.getCpf());
@@ -46,41 +56,30 @@ public class FuncionarioDAO {
             stmt.setInt(7, funcionario.getId());
 
             stmt.executeUpdate();
-            System.out.println("Funcionario " + funcionario.getNome() + " atualizado no banco de dados.");
+            System.out.println("Funcionário atualizado com sucesso!");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro ao atualizar o funcionário: " + e.getMessage());
+        } finally {
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(conn);
         }
     }
 
-    // Método para deletar o funcionário do banco de dados
-    public void deletarFuncionario(int idFuncionario) {
-        String sql = "DELETE FROM funcionarios WHERE id = ?";
-
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, idFuncionario);
-            stmt.executeUpdate();
-            System.out.println("Funcionario com ID " + idFuncionario + " deletado do banco de dados.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Método para buscar um funcionário por ID
-    public Funcionario buscarFuncionarioPorId(int id, ContaDAO contaDAO, ClienteDAO clienteDAO) {
-        Funcionario funcionario = null;
+    public Funcionario buscarFuncionarioPorId(int id) {
         String sql = "SELECT * FROM funcionarios WHERE id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        Funcionario funcionario = null;
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
+        try {
+            conn = ConnectionFactory.getConnection();
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    String senhaHash = rs.getString("senha");
+            rs = stmt.executeQuery();
 
-                    funcionario = new Funcionario(
+            if (rs.next()) {
+                funcionario = new Funcionario(
                         rs.getInt("id"),
                         rs.getString("nome"),
                         rs.getString("cpf"),
@@ -89,33 +88,36 @@ public class FuncionarioDAO {
                         stringToEndereco(rs.getString("endereco")),
                         rs.getString("codigoFuncionario"),
                         rs.getString("cargo"),
-                        senhaHash, // Agora a senha real está sendo passada
-                        contaDAO,
-                        clienteDAO
-                    );
-                }
+                        rs.getString("senha")
+                );
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Erro ao buscar o funcionário: " + e.getMessage());
+        } finally {
+            DBUtil.closeResultSet(rs);
+            DBUtil.closeStatement(stmt);
+            DBUtil.closeConnection(conn);
         }
 
         return funcionario;
     }
 
+    // Converter objeto Endereco em String
     private String enderecoToString(Endereco endereco) {
         return endereco.getLocal() + ", " + endereco.getNumeroCasa() + ", " +
                endereco.getBairro() + ", " + endereco.getCidade() + ", " + endereco.getEstado();
     }
 
+    // Converter String em objeto Endereco
     private Endereco stringToEndereco(String enderecoString) {
-        String[] enderecoParts = enderecoString.split(",");
+        String[] parts = enderecoString.split(",");
         return new Endereco(
-            enderecoParts[0].trim(),  // local
-            enderecoParts[1].trim(),  // cep
-            Integer.parseInt(enderecoParts[2].trim()),  // Número da casa
-            enderecoParts[3].trim(),  // Bairro
-            enderecoParts[4].trim(),  // Cidade
-            enderecoParts[5].trim()   // Estado
+                parts[0].trim(),
+                parts[1].trim(),
+                Integer.parseInt(parts[2].trim()),
+                parts[3].trim(),
+                parts[4].trim(),
+                parts[5].trim()
         );
     }
 }

@@ -1,6 +1,9 @@
 package model;
 
-public class ContaPoupanca extends Conta {
+import java.io.Serializable;
+
+public class ContaPoupanca extends Conta implements Serializable {
+	private static final long serialVersionUID = 1L;
     private double taxaRendimento;
 
     // Construtor da ContaPoupanca

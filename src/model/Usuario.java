@@ -1,8 +1,10 @@
 package model;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
-public abstract class Usuario {
+public abstract class Usuario implements Serializable{
+	private static final long serialVersionUID = 1L;
     protected int id;
     protected String nome;
     protected String cpf;

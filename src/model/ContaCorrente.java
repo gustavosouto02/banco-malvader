@@ -1,9 +1,11 @@
 package model;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import exception.SaldoInsuficienteException;
 
-public class ContaCorrente extends Conta {
+public class ContaCorrente extends Conta implements Serializable{
+	private static final long serialVersionUID = 1L;
     private double limite;
     private LocalDate dataVencimento;
 
@@ -22,12 +24,17 @@ public class ContaCorrente extends Conta {
     //permitir saque até o limite da conta corrente
     @Override
     public void sacar(double valor) throws SaldoInsuficienteException {
-        if (valor <= getSaldo() + limite) {  // Permite sacar saldo + limite
-            super.sacar(valor);  // Chama o método sacar da classe pai (Conta)
+        if (valor <= getSaldo()) {
+            super.sacar(valor);
+        } else if (valor <= getSaldo() + limite) {
+            double diferenca = valor - getSaldo();
+            super.sacar(getSaldo());
+            limite -= diferenca;
         } else {
             throw new SaldoInsuficienteException("Saldo insuficiente, inclusive o limite.");
         }
     }
+
 
     // Getters e Setters
     public double getLimite() {
