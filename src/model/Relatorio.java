@@ -6,36 +6,31 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
 public class Relatorio implements Serializable {
-	private static final long serialVersionUID = 1L;
-    private String tipo;
-    private LocalDateTime dataGeracao;
-    private List<String> dados;
-    
-    public Relatorio(String tipo, LocalDateTime dataGeracao, List<String> dados) {
-        this.tipo = tipo;
+    private static final long serialVersionUID = 1L;
+
+    private String tipoRelatorio;  
+    private LocalDateTime dataGeracao; 
+    private String conteudo; 
+
+    // Construtor
+    public Relatorio(String tipoRelatorio, LocalDateTime dataGeracao, String conteudo) {
+        this.tipoRelatorio = tipoRelatorio;
         this.dataGeracao = dataGeracao;
-        this.dados = dados;
+        this.conteudo = conteudo;
     }
 
-    // Método para gerar o relatório geral (em CSV)
+    // Gerar relatório geral em formato CSV
     public void gerarRelatorioGeral() {
         System.out.println("Gerando relatório geral...");
-        // O nome do arquivo pode incluir a data e o tipo do relatório
-        String nomeArquivo = "relatorio_" + tipo + "_" + dataGeracao.toString().replace(":", "_") + ".csv";
+        String nomeArquivo = "relatorio_" + tipoRelatorio + "_" + dataGeracao.toString().replace(":", "_") + ".csv";
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(nomeArquivo))) {
-            // Escreve o cabeçalho do CSV
-            writer.write("Tipo,Data,Geração,Dados");
+            writer.write("Tipo,Data de Geração,Conteúdo");
             writer.newLine();
 
-            // Escreve os dados do relatório
-            writer.write(tipo + "," + dataGeracao.toString());
-            for (String dado : dados) {
-                writer.write("," + dado);
-            }
+            writer.write(tipoRelatorio + "," + dataGeracao.toString() + "," + conteudo);
             writer.newLine();
             
             System.out.println("Relatório geral gerado com sucesso!");
@@ -44,12 +39,11 @@ public class Relatorio implements Serializable {
         }
     }
 
-    // Método para exportar o relatório gerado para o Excel
+    // Exportar relatório para Excel
     public void exportarParaExcel() {
         System.out.println("Exportando relatório para Excel...");
         
-        // Caminho do arquivo gerado
-        String nomeArquivo = "relatorio_" + tipo + "_" + dataGeracao.toString().replace(":", "_") + ".csv";
+        String nomeArquivo = "relatorio_" + tipoRelatorio + "_" + dataGeracao.toString().replace(":", "_") + ".csv";
         File arquivo = new File(nomeArquivo);
 
         if (arquivo.exists()) {
@@ -60,12 +54,12 @@ public class Relatorio implements Serializable {
     }
 
     // Getters e Setters
-    public String getTipo() {
-        return tipo;
+    public String getTipoRelatorio() {
+        return tipoRelatorio;
     }
 
-    public void setTipo(String tipo) {
-        this.tipo = tipo;
+    public void setTipoRelatorio(String tipoRelatorio) {
+        this.tipoRelatorio = tipoRelatorio;
     }
 
     public LocalDateTime getDataGeracao() {
@@ -76,11 +70,11 @@ public class Relatorio implements Serializable {
         this.dataGeracao = dataGeracao;
     }
 
-    public List<String> getDados() {
-        return dados;
+    public String getConteudo() {
+        return conteudo;
     }
 
-    public void setDados(List<String> dados) {
-        this.dados = dados;
+    public void setConteudo(String conteudo) {
+        this.conteudo = conteudo;
     }
 }

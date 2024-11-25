@@ -1,31 +1,40 @@
 package controller;
 
+import java.sql.SQLException;
+
 import DAO.FuncionarioDAO;
 import model.Funcionario;
 
 public class FuncionarioController {
-    private FuncionarioDAO funcionarioDAO;
 
-    public FuncionarioController(FuncionarioDAO funcionarioDAO) {
+    private final FuncionarioDAO funcionarioDAO;
+    // Construtor que recebe BancoController e FuncionarioDAO
+    public FuncionarioController(BancoController bancoController, FuncionarioDAO funcionarioDAO) {
         this.funcionarioDAO = funcionarioDAO;
     }
 
-    public FuncionarioController() {
-        this.funcionarioDAO = new FuncionarioDAO();
-    }
+    // Método para buscar funcionário por ID
+    public Funcionario buscarFuncionarioPorId(int id) throws SQLException {
+        if (id <= 0) {
+            throw new IllegalArgumentException("O ID deve ser um número positivo.");
+        }
 
-    public Funcionario buscarFuncionarioPorId(int id) {
-        validarId(id);
         Funcionario funcionario = funcionarioDAO.buscarFuncionarioPorId(id);
         if (funcionario == null) {
-            System.out.println("Funcionário não encontrado para o ID: " + id);
+            System.out.println("Nenhum funcionário encontrado para o ID: " + id);
         }
         return funcionario;
     }
-    
-    public void cadastrarFuncionario(Funcionario funcionario) {
-        if (funcionario == null || funcionario.getNome() == null || funcionario.getNome().isEmpty()) {
-            System.out.println("Dados inválidos para cadastro de funcionário.");
+
+    // Método para cadastrar um novo funcionário
+    public void cadastrarFuncionario(Funcionario funcionario) throws SQLException {
+        if (funcionario == null) {
+            System.out.println("Funcionário não pode ser nulo.");
+            return;
+        }
+
+        if (funcionario.getNome().isEmpty()) {
+            System.out.println("Nome do funcionário não pode ser vazio.");
             return;
         }
 
@@ -33,11 +42,12 @@ public class FuncionarioController {
             funcionarioDAO.salvarFuncionario(funcionario);
             System.out.println("Funcionário cadastrado com sucesso!");
         } catch (Exception e) {
-            System.out.println("Erro ao cadastrar funcionário: " + e.getMessage());
+            System.out.println("Erro inesperado ao cadastrar funcionário: " + e.getMessage());
         }
     }
 
-    public void alterarFuncionario(Funcionario funcionario) {
+    // Método para alterar os dados de um funcionário
+    public void alterarFuncionario(Funcionario funcionario) throws SQLException {
         if (funcionario == null || funcionario.getId() <= 0) {
             System.out.println("Dados inválidos para atualização de funcionário.");
             return;
@@ -47,13 +57,7 @@ public class FuncionarioController {
             funcionarioDAO.atualizarFuncionario(funcionario);
             System.out.println("Funcionário atualizado com sucesso!");
         } catch (Exception e) {
-            System.out.println("Erro ao atualizar funcionário: " + e.getMessage());
-        }
-    }
-
-    private void validarId(int id) {
-        if (id <= 0) {
-            throw new IllegalArgumentException("O ID deve ser um número positivo.");
+            System.out.println("Erro inesperado ao atualizar funcionário: " + e.getMessage());
         }
     }
 }

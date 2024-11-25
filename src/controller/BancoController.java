@@ -1,19 +1,15 @@
 package controller;
 
-import model.Conta;
-import model.Funcionario;
+import model.*;
 import exception.SaldoInsuficienteException;
 import exception.ValorInvalidoException;
 import util.DataManager;
+import DAO.ConnectionFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import DAO.ConnectionFactory;
 
 public class BancoController {
 
@@ -23,148 +19,207 @@ public class BancoController {
     public BancoController() {
         this.contas = new ArrayList<>();
         this.funcionarios = new ArrayList<>();
-        carregarDados();  
+        carregarDados();
     }
 
+    // Carregar dados ao iniciar o sistema
     public void carregarDados() {
         contas = DataManager.carregarContas("contas.dat");
         funcionarios = DataManager.carregarFuncionarios("funcionarios.dat");
         System.out.println("Dados carregados com sucesso!");
     }
 
+    // Salvar dados no arquivo
     private void salvarDados() {
         DataManager.salvarContas(contas, "contas.dat");
         DataManager.salvarFuncionarios(funcionarios, "funcionarios.dat");
         System.out.println("Dados salvos com sucesso!");
     }
 
-    // Métodos do menu do funcionário
-    public void abrirConta(Conta novaConta) {
+    // Métodos para manipulação de contas
+    public void abrirConta(Conta novaConta) throws SQLException {
+        if (isCpfCadastrado(novaConta.getCliente().getCpf())) {
+            System.out.println("CPF já cadastrado! Não é possível abrir outra conta.");
+            return;
+        }
         contas.add(novaConta);
-        salvarDados();  
+        salvarDados();
         System.out.println("Conta aberta com sucesso.");
     }
 
-    public void encerrarConta(int numeroConta) {
-        for (Conta conta : contas) {
-            if (conta.getNumeroConta() == numeroConta) {
-                contas.remove(conta);
-                salvarDados();  
-                System.out.println("Conta encerrada com sucesso.");
-                return;
-            }
-        }
-        System.out.println("Conta não encontrada.");
-    }
+    public void encerrarConta(String numeroConta) {
+        Conta contaParaRemover = contas.stream()
+            .filter(conta -> conta.getNumeroConta().equals(numeroConta))
+            .findFirst()
+            .orElse(null);
 
-    public void consultarDados() {
-        // Lógica para consultar dados de contas ou funcionários
-        System.out.println("Consultando dados de contas:");
-        for (Conta conta : contas) {
-            System.out.println(conta);
-        }
-        System.out.println("Consultando dados de funcionários:");
-        for (Funcionario funcionario : funcionarios) {
-            System.out.println(funcionario);
+        if (contaParaRemover != null) {
+            contas.remove(contaParaRemover);
+            salvarDados();
+            System.out.println("Conta encerrada com sucesso.");
+        } else {
+            System.out.println("Conta não encontrada.");
         }
     }
 
-    public void alterarDados(int numeroConta, String novoDado) {
-        for (Conta conta : contas) {
-            if (conta.getNumeroConta() == numeroConta) {
-                // Exemplo de alteração: modificar o nome do cliente
-                conta.getCliente().setNome(novoDado); 
-                salvarDados();  
-                System.out.println("Dados alterados com sucesso.");
-                return;
-            }
-        }
-        System.out.println("Conta não encontrada.");
-    }
-
-    public void cadastrarFuncionario(Funcionario funcionario) {
-        funcionarios.add(funcionario);
-        salvarDados();  
-        System.out.println("Funcionário cadastrado com sucesso.");
-    }
-
-    public void gerarRelatorios() {
-        // Lógica para gerar relatórios
-        System.out.println("Gerando relatórios...");
-        for (Conta conta : contas) {
-            System.out.println(conta);
-        }
-        for (Funcionario funcionario : funcionarios) {
-            System.out.println(funcionario);
-        }
-    }
-
-    // Métodos do menu do cliente
-    public double consultarSaldo(int numeroConta) {
-        for (Conta conta : contas) {
-            if (conta.getNumeroConta() == numeroConta) {
-                return conta.consultarSaldo();
-            }
-        }
-        return -1;  
-    }
-
-    public void realizarDeposito(int numeroConta, double valor) {
-        for (Conta conta : contas) {
-            if (conta.getNumeroConta() == numeroConta) {
-                try {
-                    conta.depositar(valor);
-                    salvarDados(); 
-                    System.out.println("Depósito realizado com sucesso.");
-                } catch (ValorInvalidoException e) {
-                    System.out.println(e.getMessage());
-                }
-                return;
-            }
-        }
-        System.out.println("Conta não encontrada.");
-    }
-
-    public void realizarSaque(int numeroConta, double valor) {
-        for (Conta conta : contas) {
-            if (conta.getNumeroConta() == numeroConta) {
-                try {
-                    conta.sacar(valor);
-                    salvarDados();  
-                    System.out.println("Saque realizado com sucesso.");
-                } catch (SaldoInsuficienteException e) {
-                    System.out.println(e.getMessage());
-                }
-                return;
-            }
-        }
-        System.out.println("Conta não encontrada.");
-    }
-
-    public List<Conta> getContas() {
-        return contas;
-    }
-
-    public List<Funcionario> getFuncionarios() {
-        return funcionarios;
+    public Conta consultarConta(String numeroConta) {
+        return contas.stream()
+            .filter(conta -> conta.getNumeroConta().equals(numeroConta))
+            .findFirst()
+            .orElse(null);
     }
 
     public boolean isCpfCadastrado(String cpfCliente) {
-        String sql = "SELECT COUNT(*) FROM clientes WHERE cpf = ?";  // Consulta SQL
+        String sql = "SELECT COUNT(*) FROM cliente WHERE cpf = ?";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, cpfCliente);  // Define o CPF na consulta
-
+            stmt.setString(1, cpfCliente);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    int count = rs.getInt(1);  
-                    return count > 0;  // Se count > 0, o CPF já está cadastrado
+                    return rs.getInt(1) > 0;
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace(); 
+            System.out.println("Erro ao verificar CPF: " + ex.getMessage());
         }
-        return false; 
+        return false;
     }
+
+    // Métodos de operações bancárias
+    public double consultarSaldo(String numeroConta) {
+        Conta conta = consultarConta(numeroConta);
+        return conta != null ? conta.consultarSaldo() : -1;
+    }
+
+    public void realizarDeposito(String numeroConta, double valor) throws ValorInvalidoException {
+        Conta conta = consultarConta(numeroConta);
+        if (conta != null) {
+            conta.depositar(valor);
+            registrarTransacao("DEPOSITO", valor, numeroConta);
+            salvarDados();
+            System.out.println("Depósito realizado com sucesso.");
+        } else {
+            System.out.println("Conta não encontrada.");
+        }
+    }
+
+    public void realizarSaque(String numeroConta, double valor) {
+        Conta conta = consultarConta(numeroConta);
+        if (conta != null) {
+            try {
+                conta.sacar(valor);
+                registrarTransacao("SAQUE", valor, numeroConta);
+                salvarDados();
+                System.out.println("Saque realizado com sucesso.");
+            } catch (SaldoInsuficienteException e) {
+                System.out.println(e.getMessage());
+            }
+        } else {
+            System.out.println("Conta não encontrada.");
+        }
+    }
+
+    public void realizarTransferencia(String numeroContaOrigem, String numeroContaDestino, double valor) {
+        Conta contaOrigem = consultarConta(numeroContaOrigem);
+        Conta contaDestino = consultarConta(numeroContaDestino);
+
+        if (contaOrigem != null && contaDestino != null) {
+            try {
+                contaOrigem.sacar(valor);
+                contaDestino.depositar(valor);
+                registrarTransacao("TRANSFERENCIA", valor, numeroContaOrigem);
+                registrarTransacao("TRANSFERENCIA", valor, numeroContaDestino);
+                salvarDados();
+                System.out.println("Transferência realizada com sucesso.");
+            } catch (SaldoInsuficienteException e) {
+                System.out.println(e.getMessage());
+            }
+        } else {
+            System.out.println("Uma das contas não foi encontrada.");
+        }
+    }
+
+    private void registrarTransacao(String tipoTransacao, double valor, String numeroConta) {
+        String sql = "INSERT INTO transacao (tipo_transacao, valor, data_hora, id_conta) VALUES (?, ?, ?, ?)";
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, tipoTransacao);
+            stmt.setDouble(2, valor);
+            stmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setString(4, numeroConta);
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println("Erro ao registrar transação: " + e.getMessage());
+        }
+    }
+
+    // Métodos para relatórios e consultas
+    public void gerarRelatorios() {
+        Relatorio relatorio = new Relatorio(
+            "Relatório Geral",
+            LocalDateTime.now(),
+            "Detalhes do relatório..."
+        );
+        relatorio.gerarRelatorioGeral();
+    }
+
+    public void exportarRelatorioParaExcel() {
+        Relatorio relatorio = new Relatorio(
+            "Exportação Relatório",
+            LocalDateTime.now(),
+            "Conteúdo de exportação..."
+        );
+        relatorio.exportarParaExcel();
+    }
+
+    public List<Transacao> getExtrato(String numeroConta) {
+        List<Transacao> transacoes = new ArrayList<>();
+        String sql = "SELECT tipo_transacao, valor, data_hora FROM transacao WHERE id_conta = ? ORDER BY data_hora DESC";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, numeroConta);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                transacoes.add(new Transacao(
+                    rs.getString("tipo_transacao"),
+                    rs.getDouble("valor"),
+                    rs.getTimestamp("data_hora")
+                ));
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao consultar extrato: " + e.getMessage());
+        }
+        return transacoes;
+    }
+
+    public void alterarDados(String numeroConta, String novoNome) throws SQLException {
+        Conta conta = consultarConta(numeroConta);
+        if (conta != null && conta.getCliente() != null) {
+            Cliente cliente = conta.getCliente();
+            cliente.setNome(novoNome);
+            salvarDados(); // Atualiza as alterações
+            System.out.println("Nome do cliente alterado com sucesso.");
+        } else {
+            System.out.println("Conta ou cliente não encontrados.");
+        }
+    }
+
+
+    public void consultarDados() {
+        System.out.println("Contas cadastradas:");
+        contas.forEach(System.out::println);
+        System.out.println("\nFuncionários cadastrados:");
+        funcionarios.forEach(System.out::println);
+    }
+
+	public void cadastrarClienteComConta(Cliente cliente, Conta novaConta) {
+		// TODO Auto-generated method stub
+		
+	}
 }

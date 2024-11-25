@@ -1,24 +1,25 @@
 package View;
 
 import javax.swing.*;
-import service.Autenticacao;
+import service.Autenticacao; // Certifique-se de que o caminho está correto
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class LoginView extends JFrame {
 
     private static final long serialVersionUID = 1L;
-    private JTextField userText;
+    private JTextField cpfText;
     private JPasswordField passwordText;
     private Autenticacao autenticacao;
     private static final Logger logger = Logger.getLogger(LoginView.class.getName());
 
     public LoginView() {
-        autenticacao = new Autenticacao();
+        autenticacao = new Autenticacao(); // Instância da classe de autenticação
 
         setTitle("Banco Malvader - Login");
-        setSize(400, 250);
+        setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
         JPanel panel = new JPanel();
         add(panel);
@@ -28,13 +29,13 @@ public class LoginView extends JFrame {
     private void placeComponents(JPanel panel) {
         panel.setLayout(null);
 
-        JLabel userLabel = new JLabel("Usuário:");
-        userLabel.setBounds(10, 20, 80, 25);
-        panel.add(userLabel);
+        JLabel cpfLabel = new JLabel("CPF:");
+        cpfLabel.setBounds(10, 20, 80, 25);
+        panel.add(cpfLabel);
 
-        userText = new JTextField(20);
-        userText.setBounds(100, 20, 165, 25);
-        panel.add(userText);
+        cpfText = new JTextField(20);
+        cpfText.setBounds(100, 20, 165, 25);
+        panel.add(cpfText);
 
         JLabel passwordLabel = new JLabel("Senha:");
         passwordLabel.setBounds(10, 50, 80, 25);
@@ -48,50 +49,59 @@ public class LoginView extends JFrame {
         loginFuncionarioButton.setBounds(10, 80, 150, 25);
         panel.add(loginFuncionarioButton);
 
-        loginFuncionarioButton.addActionListener(e -> {
-            realizarLogin("funcionario");
-        });
+        loginFuncionarioButton.addActionListener(e -> realizarLogin(true)); // true para funcionário
 
         JButton loginClienteButton = new JButton("Login Cliente");
         loginClienteButton.setBounds(170, 80, 150, 25);
         panel.add(loginClienteButton);
 
-        loginClienteButton.addActionListener(e -> {
-            realizarLogin("cliente");
-        });
+        loginClienteButton.addActionListener(e -> realizarLogin(false)); // false para cliente
+
+        JButton cadastrarButton = new JButton("Cadastrar");
+        cadastrarButton.setBounds(100, 120, 150, 25);
+        panel.add(cadastrarButton);
+
+        cadastrarButton.addActionListener(e -> abrirTelaCadastro());
     }
 
-    private void realizarLogin(String tipoUsuario) {
+    private void realizarLogin(boolean isFuncionario) {
         try {
-            String userIdText = userText.getText();
+            String cpf = cpfText.getText();
             String senhaFornecida = new String(passwordText.getPassword());
 
-            if (userIdText.isEmpty() || senhaFornecida.isEmpty()) {
+            if (cpf.isEmpty() || senhaFornecida.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Por favor, preencha todos os campos.");
                 return;
             }
 
-            int idUsuario;
-            try {
-                idUsuario = Integer.parseInt(userIdText);
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "ID de usuário inválido.");
-                return;
-            }
-
-            boolean autenticado = autenticacao.autenticarUsuario(idUsuario, senhaFornecida);
+            // Autenticar usuário e determinar se é funcionário ou cliente
+            boolean autenticado = autenticacao.autenticarUsuario(cpf, senhaFornecida);
 
             if (autenticado) {
-                JOptionPane.showMessageDialog(this, "Login bem-sucedido!");
-                new MenuPrincipalView().setVisible(true); // Redireciona para o Menu Principal
-                this.dispose();  // Fecha a janela de login
+                JOptionPane.showMessageDialog(this, isFuncionario
+                        ? "Login de Funcionário bem-sucedido!"
+                        : "Login de Cliente bem-sucedido!");
+
+                // Abrir menu correspondente
+                if (isFuncionario) {
+                    new MenuFuncionarioView(null, null).setVisible(true);
+                } else {
+                    new MenuClienteView().setVisible(true);
+                }
+
+                this.dispose(); // Fecha a tela de login
             } else {
-                JOptionPane.showMessageDialog(this, "Usuário ou senha incorretos.");
+                JOptionPane.showMessageDialog(this, "CPF ou senha incorretos.");
             }
         } catch (Exception ex) {
             logger.log(Level.SEVERE, "Erro inesperado durante o login", ex);
             JOptionPane.showMessageDialog(this, "Erro inesperado. Tente novamente mais tarde.");
         }
+    }
+
+    private void abrirTelaCadastro() {
+        // Abre a tela de cadastro de usuário
+        new CadastroContaFrame().setVisible(true);
     }
 
     public static void main(String[] args) {

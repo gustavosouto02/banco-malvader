@@ -13,15 +13,18 @@ import java.time.LocalDate;
 public class AberturaDeContaScreen extends JFrame {
 
     private static final long serialVersionUID = 1L;
+
     public AberturaDeContaScreen(BancoController bancoController) {
         setTitle("Abertura de Conta");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
 
         JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(7, 2)); // Aumentando para 7 linhas para um layout mais organizado
+        panel.setLayout(new GridLayout(7, 2));
         add(panel);
 
+        // Campos do cliente
         JLabel nomeLabel = new JLabel("Nome do Cliente:");
         JTextField nomeField = new JTextField();
         panel.add(nomeLabel);
@@ -32,11 +35,12 @@ public class AberturaDeContaScreen extends JFrame {
         panel.add(cpfLabel);
         panel.add(cpfField);
 
-        JLabel enderecoLabel = new JLabel("Endereço do Cliente:");
+        JLabel enderecoLabel = new JLabel("Endereço (Local, Nº, Bairro, Cidade, Estado - CEP):");
         JTextField enderecoField = new JTextField();
         panel.add(enderecoLabel);
         panel.add(enderecoField);
 
+        // Campos da conta
         JLabel numeroContaLabel = new JLabel("Número da Conta:");
         JTextField numeroContaField = new JTextField();
         panel.add(numeroContaLabel);
@@ -48,26 +52,28 @@ public class AberturaDeContaScreen extends JFrame {
         panel.add(saldoField);
 
         JLabel tipoContaLabel = new JLabel("Tipo de Conta:");
-        JComboBox<String> tipoContaCombo = new JComboBox<>(new String[] {"Corrente", "Poupança"});
+        JComboBox<String> tipoContaCombo = new JComboBox<>(new String[]{"Corrente", "Poupança"});
         panel.add(tipoContaLabel);
         panel.add(tipoContaCombo);
 
         JButton confirmarButton = new JButton("Confirmar");
-        panel.add(new JLabel()); // Espaço vazio
+        panel.add(new JLabel());
         panel.add(confirmarButton);
 
-        // Action listener para o botão de confirmar
         confirmarButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 try {
+                    // Captura os dados do formulário
                     String nomeCliente = nomeField.getText();
                     String cpfCliente = cpfField.getText();
-                    String enderecoCliente = enderecoField.getText();
+                    String enderecoClienteStr = enderecoField.getText();
                     String numeroContaText = numeroContaField.getText();
                     String saldoInicialText = saldoField.getText();
                     String tipoConta = (String) tipoContaCombo.getSelectedItem();
 
-                    if (nomeCliente.isEmpty() || cpfCliente.isEmpty() || enderecoCliente.isEmpty() || numeroContaText.isEmpty() || saldoInicialText.isEmpty()) {
+                    // Validações
+                    if (nomeCliente.isEmpty() || cpfCliente.isEmpty() || enderecoClienteStr.isEmpty()
+                            || numeroContaText.isEmpty() || saldoInicialText.isEmpty()) {
                         JOptionPane.showMessageDialog(null, "Todos os campos devem ser preenchidos!");
                         return;
                     }
@@ -77,7 +83,6 @@ public class AberturaDeContaScreen extends JFrame {
                         return;
                     }
 
-                    int numeroConta = Integer.parseInt(numeroContaText);
                     double saldoInicial = Double.parseDouble(saldoInicialText);
 
                     if (bancoController.isCpfCadastrado(cpfCliente)) {
@@ -85,20 +90,17 @@ public class AberturaDeContaScreen extends JFrame {
                         return;
                     }
 
-                    Endereco endereco = new Endereco("CEP_EXEMPLO", enderecoCliente, 123, "Bairro", "Cidade", "Estado");
-                    Cliente cliente = new Cliente(1, nomeCliente, cpfCliente, LocalDate.now(), "123456789", endereco, "senha123", null);
-
-                    Conta novaConta = null;
-                    if ("Corrente".equals(tipoConta)) {
-                        novaConta = new Conta(numeroConta, "1234", cliente, saldoInicial);
-                    } else if ("Poupança".equals(tipoConta)) {
-                        novaConta = new Conta(numeroConta, "1234", cliente, saldoInicial);
-                    }
-
-                    bancoController.abrirConta(novaConta);
+                    // Cria os objetos baseados nos dados fornecidos
+                    Endereco endereco = Endereco.fromString(enderecoClienteStr);
+                    Cliente cliente = new Cliente(nomeCliente, cpfCliente, LocalDate.now(), "999999999", endereco, "senha123", null);
+                    Conta novaConta = new Conta(numeroContaText, "1234", saldoInicial, tipoConta, 0);
+                    cliente.setConta(novaConta);
+                    
+                    // Chama o controlador para persistir no banco
+                    bancoController.cadastrarClienteComConta(cliente, novaConta);
 
                     JOptionPane.showMessageDialog(null, "Conta criada com sucesso!");
-                    dispose(); // Fecha a janela de abertura de conta
+                    dispose();
 
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(null, "Erro ao criar conta: " + ex.getMessage());
@@ -107,7 +109,7 @@ public class AberturaDeContaScreen extends JFrame {
         });
     }
 
-    // Função para validar CPF (exemplo simples)
+    // Validação simples de CPF
     private boolean isValidCPF(String cpf) {
         return cpf != null && cpf.length() == 11 && cpf.matches("[0-9]+");
     }

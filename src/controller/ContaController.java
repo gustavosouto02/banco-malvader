@@ -1,7 +1,7 @@
 package controller;
 
-import service.ContaService;
 import model.Conta;
+import service.ContaService;
 import exception.SaldoInsuficienteException;
 import exception.ValorInvalidoException;
 
@@ -9,68 +9,72 @@ public class ContaController {
     private ContaService contaService;
 
     public ContaController() {
-        this.contaService = new ContaService(); 
+        this.contaService = new ContaService();
     }
 
-    // Alterando o nome do método para refletir a abertura da conta (Cadastro)
-    public void abrirConta(Conta novaConta) {
+    public void criarConta(Conta conta) {
         try {
-            contaService.abrirConta(novaConta);  // Usando a contaService para abrir a conta
-            System.out.println("Conta aberta com sucesso.");
+            contaService.abrirConta(conta);
+            System.out.println("Conta criada com sucesso!");
         } catch (IllegalArgumentException e) {
-            System.out.println("Erro ao abrir conta: " + e.getMessage());
+            System.out.println("Erro ao criar conta: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.out.println("Erro no sistema: " + e.getMessage());
         }
     }
 
-    public void encerrarConta(int contaId) {
+    public void buscarConta(int idConta) {
         try {
-            validarContaId(contaId);
-            contaService.encerrarConta(contaId);
-            System.out.println("Conta encerrada com sucesso.");
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            System.out.println("Erro ao encerrar conta: " + e.getMessage());
-        } catch (Exception e) {
-            System.out.println("Erro inesperado: " + e.getMessage());
+            Conta conta = contaService.buscarContaPorId(idConta);
+            if (conta != null) {
+                System.out.println("Conta encontrada: " + conta);
+            } else {
+                System.out.println("Conta não encontrada.");
+            }
+        } catch (RuntimeException e) {
+            System.out.println("Erro ao buscar conta: " + e.getMessage());
         }
     }
 
-    public void sacar(int contaId, double valor) {
+    public void atualizarConta(Conta conta) {
         try {
-            validarContaId(contaId);
-            validarValor(valor);
-            contaService.realizarSaque(contaId, valor);
-            System.out.println("Saque realizado com sucesso.");
-        } catch (SaldoInsuficienteException e) {
-            System.out.println("Erro ao sacar: Saldo insuficiente.");
+            contaService.atualizarConta(conta);
+            System.out.println("Conta atualizada com sucesso!");
+        } catch (RuntimeException e) {
+            System.out.println("Erro ao atualizar conta: " + e.getMessage());
+        }
+    }
+
+    public void deletarConta(int idConta) {
+        try {
+            contaService.encerrarConta(idConta);
+            System.out.println("Conta deletada com sucesso!");
+        } catch (IllegalArgumentException | ValorInvalidoException e) {
+            System.out.println("Erro ao deletar conta: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.out.println("Erro no sistema: " + e.getMessage());
+        }
+    }
+
+    public void realizarSaque(int idConta, double valor) {
+        try {
+            contaService.realizarSaque(idConta, valor);
+            System.out.println("Saque realizado com sucesso!");
+        } catch (SaldoInsuficienteException | ValorInvalidoException e) {
+            System.out.println("Erro ao realizar saque: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.out.println("Erro no sistema: " + e.getMessage());
+        }
+    }
+
+    public void realizarDeposito(int idConta, double valor) {
+        try {
+            contaService.realizarDeposito(idConta, valor);
+            System.out.println("Depósito realizado com sucesso!");
         } catch (ValorInvalidoException e) {
-            System.out.println("Erro ao sacar: Valor inválido.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Erro ao sacar: " + e.getMessage());
-        }
-    }
-
-    public void depositar(int contaId, double valor) {
-        try {
-            validarContaId(contaId);
-            validarValor(valor);
-            contaService.realizarDeposito(contaId, valor);
-            System.out.println("Depósito realizado com sucesso.");
-        } catch (ValorInvalidoException e) {
-            System.out.println("Erro ao depositar: Valor inválido.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("Erro ao depositar: " + e.getMessage());
-        }
-    }
-
-    private void validarContaId(int contaId) {
-        if (contaId <= 0) {
-            throw new IllegalArgumentException("ID da conta deve ser um número positivo.");
-        }
-    }
-
-    private void validarValor(double valor) {
-        if (valor <= 0) {
-            throw new IllegalArgumentException("O valor deve ser maior que zero.");
+            System.out.println("Erro ao realizar depósito: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.out.println("Erro no sistema: " + e.getMessage());
         }
     }
 }

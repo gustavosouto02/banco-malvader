@@ -33,9 +33,10 @@ public class ContaService {
         }
     }
 
+
     public void encerrarConta(int contaId) throws ValorInvalidoException {
         try {
-            Conta conta = contaDAO.buscarContaPorNumero(contaId);
+            Conta conta = contaDAO.buscarContaPorId(contaId);
 
             if (conta == null) {
                 throw new IllegalArgumentException("Conta não encontrada.");
@@ -59,7 +60,7 @@ public class ContaService {
         }
 
         try {
-            Conta conta = contaDAO.buscarContaPorNumero(contaId);
+            Conta conta = contaDAO.buscarContaPorId(contaId);
 
             if (conta == null) {
                 throw new IllegalArgumentException("Conta não encontrada.");
@@ -85,7 +86,7 @@ public class ContaService {
         }
 
         try {
-            Conta conta = contaDAO.buscarContaPorNumero(contaId);
+            Conta conta = contaDAO.buscarContaPorId(contaId);
 
             if (conta == null) {
                 throw new IllegalArgumentException("Conta não encontrada.");
@@ -100,4 +101,27 @@ public class ContaService {
             throw new RuntimeException("Erro ao realizar depósito.", e);
         }
     }
+    
+    public void atualizarConta(Conta conta) {
+        try {
+            if (conta == null) {
+                throw new IllegalArgumentException("Conta inválida para atualização.");
+            }
+            contaDAO.atualizarConta(conta);
+            logger.info("Conta atualizada com sucesso: " + conta.getId_conta());
+        } catch (SQLException e) {
+            logger.severe("Erro ao atualizar conta: " + e.getMessage());
+            throw new RuntimeException("Erro ao atualizar conta.", e);
+        }
+    }
+
+    public Conta buscarContaPorId(int idConta) {
+        try {
+            return contaDAO.buscarContaPorId(idConta);
+        } catch (SQLException e) {
+            logger.severe("Erro ao buscar conta: " + e.getMessage());
+            throw new RuntimeException("Erro ao buscar conta.", e);
+        }
+    }
+
 }

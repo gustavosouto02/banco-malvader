@@ -1,6 +1,11 @@
 package View;
 
 import javax.swing.*;
+
+import DAO.FuncionarioDAO;
+import controller.BancoController;
+import controller.FuncionarioController;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -12,6 +17,7 @@ public class MenuPrincipalView extends JFrame {
         setTitle("Menu Principal");
         setSize(400, 250);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
         JPanel panel = new JPanel();
         add(panel);
@@ -27,8 +33,9 @@ public class MenuPrincipalView extends JFrame {
 
         funcionarioButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                new MenuFuncionarioView(null).setVisible(true); // Abre o Menu do Funcionário
-                dispose();  // Fecha o Menu Principal
+                // Exibe o menu do funcionário
+                new MenuFuncionarioView(new BancoController(), new FuncionarioController(new BancoController(), new FuncionarioDAO())).setVisible(true);
+                dispose(); // Fecha a tela atual
             }
         });
 
@@ -38,18 +45,9 @@ public class MenuPrincipalView extends JFrame {
 
         clienteButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                new MenuClienteView().setVisible(true); // Abre o Menu do Cliente
-                dispose();  // Fecha o Menu Principal
-            }
-        });
-
-        JButton sairButton = new JButton("Sair");
-        sairButton.setBounds(10, 120, 150, 25);
-        panel.add(sairButton);
-
-        sairButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                System.exit(0);  // Fecha o aplicativo
+                // Exibe o menu do cliente
+                new MenuClienteView().setVisible(true);
+                dispose(); // Fecha a tela atual
             }
         });
     }

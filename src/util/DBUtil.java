@@ -39,4 +39,8 @@ public class DBUtil {
             e.printStackTrace();
         }
     }
+
+	public static Connection getConnection() {
+		return null;
+	}
 }
