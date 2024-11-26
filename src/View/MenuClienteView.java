@@ -4,7 +4,9 @@
 	import controller.BancoController;
 	import exception.ValorInvalidoException;
 	import model.Transacao;  // Certifique-se de importar a classe Transacao
-	import java.awt.event.ActionEvent;
+
+import java.awt.Dimension;
+import java.awt.event.ActionEvent;
 	import java.awt.event.ActionListener;
 import java.sql.SQLException;
 import java.util.List;
@@ -170,10 +172,20 @@ import java.util.List;
 	                                extrato.append("Valor: R$ ").append(transacao.getValor()).append("\n\n");
 	                            }
 
-	                            // Exibe o extrato em uma área de texto rolável
+	                            // Cria uma área de texto para exibir o extrato
 	                            JTextArea textArea = new JTextArea(extrato.toString());
 	                            textArea.setEditable(false); // Impede a edição do texto
+	                            textArea.setLineWrap(true); // Quebra de linha automática
+	                            textArea.setWrapStyleWord(true); // Quebra respeitando palavras
+
+	                            // Configura o tamanho inicial da área de texto
+	                            textArea.setPreferredSize(new Dimension(600, 400));
+
+	                            // Adiciona a área de texto a um painel rolável
 	                            JScrollPane scrollPane = new JScrollPane(textArea);
+	                            scrollPane.setPreferredSize(new Dimension(600, 400)); // Configura o tamanho do painel rolável
+
+	                            // Exibe o painel rolável em um JOptionPane
 	                            JOptionPane.showMessageDialog(null, scrollPane, "Extrato", JOptionPane.INFORMATION_MESSAGE);
 	                        }
 	                    } catch (Exception ex) {
@@ -186,6 +198,7 @@ import java.util.List;
 	                }
 	            }
 	        });
+
 
 	
 	        JButton sairButton = new JButton("Sair");
