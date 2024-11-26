@@ -4,6 +4,7 @@ import javax.swing.*;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -143,29 +144,95 @@ public class MenuFuncionarioView extends JFrame {
             JOptionPane.showMessageDialog(null, "Erro ao buscar funcionário: " + ex.getMessage());
         }
     }
-    
-    private void abrirConta() {
-        String tipoConta = JOptionPane.showInputDialog("Tipo de conta (POUPANCA ou CORRENTE):").toUpperCase();
-        String agencia = JOptionPane.showInputDialog("Agência:");
-        String numeroConta = JOptionPane.showInputDialog("Número da conta:");
-        double saldo = Double.parseDouble(JOptionPane.showInputDialog("Saldo inicial:"));
-        int idCliente = Integer.parseInt(JOptionPane.showInputDialog("ID do cliente:"));
+    public enum TipoConta {
+        POUPANCA, CORRENTE;
 
-        try {
-            if (tipoConta.equals("POUPANCA")) {
-                double taxaRendimento = Double.parseDouble(JOptionPane.showInputDialog("Taxa de rendimento (0 a 1):"));
-                funcionarioController.abrirContaPoupanca(agencia, numeroConta, saldo, idCliente, taxaRendimento);
-            } else if (tipoConta.equals("CORRENTE")) {
-                double limite = Double.parseDouble(JOptionPane.showInputDialog("Limite:"));
-                LocalDate vencimento = LocalDate.parse(JOptionPane.showInputDialog("Vencimento (yyyy-MM-dd):"));
-                funcionarioController.abrirContaCorrente(agencia, numeroConta, saldo, idCliente, limite, vencimento);
-            } else {
-                JOptionPane.showMessageDialog(this, "Tipo de conta inválido.");
+        public static TipoConta fromString(String tipo) {
+            try {
+                return TipoConta.valueOf(tipo.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return null;
             }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Erro ao abrir conta: " + e.getMessage());
         }
     }
+
+    private void abrirConta() {
+        // Solicita a senha de administrador
+        String senhaAdmin = JOptionPane.showInputDialog("Digite a senha de administrador:");
+        if (senhaAdmin == null || !senhaAdmin.equals(SENHA_ADMIN)) {
+            JOptionPane.showMessageDialog(this, "Senha de administrador incorreta ou operação cancelada.");
+            return; // Não continua se a senha estiver errada
+        }
+
+        // Criando o painel para o formulário
+        JPanel panel = new JPanel(new GridLayout(0, 2, 5, 5)); // Layout simples de formulário
+
+        // Campos de entrada do formulário
+        JComboBox<String> tipoContaComboBox = new JComboBox<>(new String[] { "POUPANCA", "CORRENTE" });
+        JTextField agenciaField = new JTextField();
+        JTextField numeroContaField = new JTextField();
+        JTextField saldoField = new JTextField();
+        JTextField idClienteField = new JTextField();
+        JTextField taxaRendimentoField = new JTextField();
+        JTextField limiteField = new JTextField();
+        JTextField vencimentoField = new JTextField();
+
+        // Adicionando os campos ao painel
+        panel.add(new JLabel("Tipo de Conta:"));
+        panel.add(tipoContaComboBox);
+        panel.add(new JLabel("Agência:"));
+        panel.add(agenciaField);
+        panel.add(new JLabel("Número da Conta:"));
+        panel.add(numeroContaField);
+        panel.add(new JLabel("Saldo Inicial:"));
+        panel.add(saldoField);
+        panel.add(new JLabel("ID do Cliente:"));
+        panel.add(idClienteField);
+        panel.add(new JLabel("Taxa de Rendimento:"));
+        panel.add(taxaRendimentoField);
+        panel.add(new JLabel("Limite:"));
+        panel.add(limiteField);
+        panel.add(new JLabel("Vencimento:"));
+        panel.add(vencimentoField);
+
+        // Botão de "Cadastrar"
+        int option = JOptionPane.showConfirmDialog(this, panel, "Abrir Conta", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (option == JOptionPane.OK_OPTION) {
+            try {
+                // Coleta os dados do formulário
+                String tipoContaStr = (String) tipoContaComboBox.getSelectedItem();
+                TipoConta tipoConta = TipoConta.fromString(tipoContaStr);
+                String agencia = agenciaField.getText();
+                String numeroConta = numeroContaField.getText();
+                double saldo = Double.parseDouble(saldoField.getText());
+                int idCliente = Integer.parseInt(idClienteField.getText());
+
+                // Verifica se o tipo de conta é válido
+                if (tipoConta == null) {
+                    JOptionPane.showMessageDialog(this, "Tipo de conta inválido.");
+                    return;
+                }
+
+                // Chama o método correto com base no tipo de conta
+                if (tipoConta == TipoConta.POUPANCA) {
+                    double taxaRendimento = Double.parseDouble(taxaRendimentoField.getText());
+                    funcionarioController.abrirContaPoupanca(agencia, numeroConta, saldo, idCliente, taxaRendimento);
+                } else if (tipoConta == TipoConta.CORRENTE) {
+                    double limite = Double.parseDouble(limiteField.getText());
+                    LocalDate vencimento = LocalDate.parse(vencimentoField.getText());
+                    funcionarioController.abrirContaCorrente(agencia, numeroConta, saldo, idCliente, limite, vencimento);
+                }
+
+                JOptionPane.showMessageDialog(this, "Conta aberta com sucesso!");
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Erro ao abrir conta: " + ex.getMessage());
+            }
+        }
+    }
+
+
 
 
  // Método para encerrar conta pelo número
@@ -581,80 +648,126 @@ public class MenuFuncionarioView extends JFrame {
     }
 
     private void cadastrarFuncionario() {
-        try {
-            // Solicita a senha de administrador
-            String senhaAdmin = JOptionPane.showInputDialog("Digite a senha de administrador:");
-            if (senhaAdmin == null || !senhaAdmin.equals(SENHA_ADMIN)) {
-                JOptionPane.showMessageDialog(this, "Senha de administrador incorreta ou operação cancelada.");
-                return;
-            }
+        // Solicita a senha de administrador
+        String senhaAdmin = JOptionPane.showInputDialog("Digite a senha de administrador:");
+        if (senhaAdmin == null || !senhaAdmin.equals(SENHA_ADMIN)) {
+            JOptionPane.showMessageDialog(this, "Senha de administrador incorreta ou operação cancelada.");
+            return; // Não continua se a senha estiver errada
+        }
 
-            // Coleta os dados do funcionário
-            String codigoFuncionarioStr = JOptionPane.showInputDialog("Digite o código do funcionário:");
-            String cargo = JOptionPane.showInputDialog("Digite o cargo:");
-            String nome = JOptionPane.showInputDialog("Digite o nome do funcionário:");
-            String cpf = JOptionPane.showInputDialog("Digite o CPF (apenas números):");
-            String dataNascimentoStr = JOptionPane.showInputDialog("Digite a data de nascimento (dd/MM/yyyy):");
-            String telefone = JOptionPane.showInputDialog("Digite o telefone:");
-            String senha = JOptionPane.showInputDialog("Digite a senha para o funcionário:");
+        // Criando o painel para o formulário
+        JPanel panel = new JPanel(new GridLayout(0, 2, 5, 5)); // Layout simples de formulário
 
-            // Coleta o endereço
-            String cep = JOptionPane.showInputDialog("Digite o CEP:");
-            String local = JOptionPane.showInputDialog("Digite o logradouro:");
-            String numeroCasaStr = JOptionPane.showInputDialog("Digite o número da casa:");
-            String bairro = JOptionPane.showInputDialog("Digite o bairro:");
-            String cidade = JOptionPane.showInputDialog("Digite a cidade:");
-            String estado = JOptionPane.showInputDialog("Digite o estado:");
+        // Campos de entrada do formulário
+        JTextField tfCodigoFuncionario = new JTextField();
+        JTextField tfCargo = new JTextField();
+        JTextField tfNome = new JTextField();
+        JTextField tfCpf = new JTextField();
+        JTextField tfDataNascimento = new JTextField();
+        JTextField tfTelefone = new JTextField();
+        JTextField tfSenha = new JTextField();
+        JTextField tfCep = new JTextField();
+        JTextField tfLocal = new JTextField();
+        JTextField tfNumeroCasa = new JTextField();
+        JTextField tfBairro = new JTextField();
+        JTextField tfCidade = new JTextField();
+        JTextField tfEstado = new JTextField();
 
-            // Validação básica dos campos obrigatórios
-            if (codigoFuncionarioStr == null || cargo == null || nome == null || cpf == null || dataNascimentoStr == null || telefone == null || senha == null ||
-                cep == null || local == null || numeroCasaStr == null || bairro == null || cidade == null || estado == null ||
-                codigoFuncionarioStr.trim().isEmpty() || cargo.trim().isEmpty() || nome.trim().isEmpty() || cpf.trim().isEmpty() ||
-                dataNascimentoStr.trim().isEmpty() || telefone.trim().isEmpty() || senha.trim().isEmpty() || cep.trim().isEmpty() || 
-                local.trim().isEmpty() || numeroCasaStr.trim().isEmpty() || bairro.trim().isEmpty() || cidade.trim().isEmpty() || estado.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Todos os campos são obrigatórios.");
-                return;
-            }
+        // Adicionando os campos ao painel
+        panel.add(new JLabel("Código do Funcionário:"));
+        panel.add(tfCodigoFuncionario);
+        panel.add(new JLabel("Cargo:"));
+        panel.add(tfCargo);
+        panel.add(new JLabel("Nome:"));
+        panel.add(tfNome);
+        panel.add(new JLabel("CPF:"));
+        panel.add(tfCpf);
+        panel.add(new JLabel("Data de Nascimento (dd/MM/yyyy):"));
+        panel.add(tfDataNascimento);
+        panel.add(new JLabel("Telefone:"));
+        panel.add(tfTelefone);
+        panel.add(new JLabel("Senha:"));
+        panel.add(tfSenha);
+        panel.add(new JLabel("CEP:"));
+        panel.add(tfCep);
+        panel.add(new JLabel("Logradouro:"));
+        panel.add(tfLocal);
+        panel.add(new JLabel("Número da Casa:"));
+        panel.add(tfNumeroCasa);
+        panel.add(new JLabel("Bairro:"));
+        panel.add(tfBairro);
+        panel.add(new JLabel("Cidade:"));
+        panel.add(tfCidade);
+        panel.add(new JLabel("Estado:"));
+        panel.add(tfEstado);
 
-            // Convertendo e validando os dados
-            LocalDate dataNascimento;
-            int numeroCasa;
-            int codigoFuncionario;
+        // Botão de "Cadastrar"
+        int option = JOptionPane.showConfirmDialog(this, panel, "Cadastro de Funcionário", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (option == JOptionPane.OK_OPTION) {
             try {
-                codigoFuncionario = Integer.parseInt(codigoFuncionarioStr);
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                dataNascimento = LocalDate.parse(dataNascimentoStr, formatter);
-                numeroCasa = Integer.parseInt(numeroCasaStr);
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, "Dados inválidos. Verifique o formato do código, data de nascimento ou número da casa.");
-                return;
+                // Coleta os dados do formulário
+                String codigoFuncionarioStr = tfCodigoFuncionario.getText();
+                String cargo = tfCargo.getText();
+                String nome = tfNome.getText();
+                String cpf = tfCpf.getText();
+                String dataNascimentoStr = tfDataNascimento.getText();
+                String telefone = tfTelefone.getText();
+                String senha = tfSenha.getText();
+                String cep = tfCep.getText();
+                String local = tfLocal.getText();
+                String numeroCasaStr = tfNumeroCasa.getText();
+                String bairro = tfBairro.getText();
+                String cidade = tfCidade.getText();
+                String estado = tfEstado.getText();
+
+                // Validação básica dos campos obrigatórios
+                if (codigoFuncionarioStr.isEmpty() || cargo.isEmpty() || nome.isEmpty() || cpf.isEmpty() || dataNascimentoStr.isEmpty() ||
+                    telefone.isEmpty() || senha.isEmpty() || cep.isEmpty() || local.isEmpty() || numeroCasaStr.isEmpty() ||
+                    bairro.isEmpty() || cidade.isEmpty() || estado.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Todos os campos são obrigatórios.");
+                    return;
+                }
+
+                // Convertendo e validando os dados
+                LocalDate dataNascimento;
+                int numeroCasa;
+                int codigoFuncionario;
+                try {
+                    codigoFuncionario = Integer.parseInt(codigoFuncionarioStr);
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                    dataNascimento = LocalDate.parse(dataNascimentoStr, formatter);
+                    numeroCasa = Integer.parseInt(numeroCasaStr);
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Dados inválidos. Verifique o formato do código, data de nascimento ou número da casa.");
+                    return;
+                }
+
+                // Criando o objeto Endereco
+                Endereco endereco = new Endereco(cep, local, numeroCasa, bairro, cidade, estado);
+
+                // Criando o objeto Funcionario com o construtor
+                Funcionario funcionario = new Funcionario(
+                    nome,
+                    cpf,
+                    dataNascimento,
+                    telefone,
+                    endereco,
+                    codigoFuncionario,
+                    cargo,
+                    senha
+                );
+
+                // Salva o funcionário no banco de dados
+                funcionarioController.cadastrarFuncionario(funcionario);
+
+                JOptionPane.showMessageDialog(this, "Funcionário cadastrado com sucesso!");
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Erro ao cadastrar funcionário: " + ex.getMessage());
             }
-
-            // Criando o objeto Endereco
-            Endereco endereco = new Endereco(cep, local, numeroCasa, bairro, cidade, estado);
-
-            // Criando o objeto Funcionario com o construtor
-            Funcionario funcionario = new Funcionario(
-                nome,
-                cpf,
-                dataNascimento,
-                telefone,
-                endereco,
-                codigoFuncionario,
-                cargo,
-                senha
-            );
-
-            // Salva o funcionário no banco de dados
-            funcionarioController.cadastrarFuncionario(funcionario);
-
-            JOptionPane.showMessageDialog(this, "Funcionário cadastrado com sucesso!");
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Erro ao processar dados: valores numéricos inválidos.");
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "Erro ao cadastrar funcionário: " + ex.getMessage());
         }
     }
+
 
 
 
