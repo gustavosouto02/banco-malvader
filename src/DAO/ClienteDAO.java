@@ -1,10 +1,16 @@
+
 package DAO;
 
 import model.Cliente;
-import model.Endereco;
 import model.Conta;
+import model.ContaCorrente;
+import model.ContaPoupanca;
+import model.Endereco;
 import util.DBUtil;
+
+import java.lang.System.Logger.Level;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,130 +18,261 @@ public class ClienteDAO {
     private static final System.Logger logger = System.getLogger(ClienteDAO.class.getName());
 
     public ClienteDAO() {
-        new UsuarioDAO();
+        // Inicializa o DAO
     }
 
-    public int salvarCliente(Cliente cliente) {
-        Connection conn = null;
-        PreparedStatement stmtCliente = null;
-        PreparedStatement stmtEndereco = null;
-        int idUsuarioInserido = -1;
+    // Salvar conta no banco
+    public int salvarConta(Conta conta) {
+        String sqlConta = """
+            INSERT INTO conta (numero_conta, agencia, saldo, tipo_conta, id_cliente)
+            VALUES (?, ?, ?, ?, ?)
+        """;
+        String sqlContaCorrente = """
+            INSERT INTO conta_corrente (limite, data_vencimento, id_conta)
+            VALUES (?, ?, ?)
+        """;
+        String sqlContaPoupanca = """
+            INSERT INTO conta_poupanca (taxa_rendimento, id_conta)
+            VALUES (?, ?)
+        """;
 
-        String sqlEndereco = "INSERT INTO endereco (cep, local, numero_casa, bairro, cidade, estado) VALUES (?, ?, ?, ?, ?, ?)";
-        String sqlCliente = """
-            INSERT INTO cliente (nome, cpf, data_nascimento, telefone, senha, id_conta) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        """; 
+        int idContaInserida = -1;
+        Connection conn = null;
 
         try {
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            // Salva o endereço
-            stmtEndereco = conn.prepareStatement(sqlEndereco, Statement.RETURN_GENERATED_KEYS);
-            stmtEndereco.setString(1, cliente.getEndereco().getCep());
-            stmtEndereco.setString(2, cliente.getEndereco().getLocal());
-            stmtEndereco.setInt(3, cliente.getEndereco().getNumeroCasa());
-            stmtEndereco.setString(4, cliente.getEndereco().getBairro());
-            stmtEndereco.setString(5, cliente.getEndereco().getCidade());
-            stmtEndereco.setString(6, cliente.getEndereco().getEstado());
-            stmtEndereco.executeUpdate();
+            // Inserir na tabela 'conta'
+            try (PreparedStatement stmtConta = conn.prepareStatement(sqlConta, Statement.RETURN_GENERATED_KEYS)) {
+                stmtConta.setString(1, conta.getNumeroConta());
+                stmtConta.setString(2, conta.getAgencia());
+                stmtConta.setDouble(3, conta.getSaldo());
+                stmtConta.setString(4, conta.getTipoConta());
+                stmtConta.setInt(5, conta.getId_cliente());
+                stmtConta.executeUpdate();
 
-            ResultSet rsEndereco = stmtEndereco.getGeneratedKeys();
-            int idEndereco = 0;
-            if (rsEndereco.next()) {
-                idEndereco = rsEndereco.getInt(1);
-            }
-
-            cliente.getEndereco().setIdEndereco(idEndereco);
-
-            // Salva o cliente
-            stmtCliente = conn.prepareStatement(sqlCliente, Statement.RETURN_GENERATED_KEYS);
-            stmtCliente.setString(1, cliente.getNome());
-            stmtCliente.setString(2, cliente.getCpf());
-            stmtCliente.setDate(3, Date.valueOf(cliente.getDataNascimento()));
-            stmtCliente.setString(4, cliente.getTelefone());
-            stmtCliente.setString(5, cliente.getSenhaHash());
-
-            if (cliente.getConta() != null) {
-                stmtCliente.setInt(6, cliente.getConta().getId_conta());
-            } else {
-                stmtCliente.setNull(6, Types.INTEGER);
-            }
-
-            int rowsAffected = stmtCliente.executeUpdate();
-            if (rowsAffected > 0) {
-                try (ResultSet rs = stmtCliente.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        idUsuarioInserido = rs.getInt(1);  // Atribui o id gerado
-                        cliente.setId_cliente(idUsuarioInserido);  // Atualiza o id_cliente após inserção
+                try (ResultSet rsConta = stmtConta.getGeneratedKeys()) {
+                    if (rsConta.next()) {
+                        idContaInserida = rsConta.getInt(1);
                     }
                 }
             }
 
-            if (idUsuarioInserido != -1) {
-                conn.commit();  // Commit apenas se a operação foi bem-sucedida
+            // Inserir na tabela específica de conta corrente ou poupança
+            if (conta instanceof ContaCorrente corrente) {
+                try (PreparedStatement stmtContaCorrente = conn.prepareStatement(sqlContaCorrente)) {
+                    stmtContaCorrente.setDouble(1, corrente.getLimite());
+                    stmtContaCorrente.setDate(2, Date.valueOf(corrente.getDataVencimento()));
+                    stmtContaCorrente.setInt(3, idContaInserida);
+                    stmtContaCorrente.executeUpdate();
+                }
+            } else if (conta instanceof ContaPoupanca poupanca) {
+                try (PreparedStatement stmtContaPoupanca = conn.prepareStatement(sqlContaPoupanca)) {
+                    stmtContaPoupanca.setDouble(1, poupanca.getTaxaRendimento());
+                    stmtContaPoupanca.setInt(2, idContaInserida);
+                    stmtContaPoupanca.executeUpdate();
+                }
             }
+
+            conn.commit();
         } catch (SQLException e) {
-            logger.log(System.Logger.Level.ERROR, "Erro ao salvar cliente no banco de dados.", e);
+            logger.log(Level.ERROR, "Erro ao salvar conta no banco de dados.", e);
             if (conn != null) {
                 try {
                     conn.rollback();
-                } catch (SQLException ex) {
-                    logger.log(System.Logger.Level.ERROR, "Erro ao fazer rollback.", ex);
+                } catch (SQLException rollbackEx) {
+                    logger.log(Level.ERROR, "Erro ao realizar rollback.", rollbackEx);
                 }
             }
         } finally {
-            try {
-                if (conn != null) {
-                    conn.setAutoCommit(true);
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException closeEx) {
+                    logger.log(Level.ERROR, "Erro ao fechar conexão.", closeEx);
                 }
-            } catch (SQLException e) {
-                logger.log(System.Logger.Level.ERROR, "Erro ao restaurar auto commit.", e);
             }
-            DBUtil.closeStatement(stmtCliente);
-            DBUtil.closeStatement(stmtEndereco);
-            DBUtil.closeConnection(conn);
         }
 
-        return idUsuarioInserido;  // Retorna o id gerado
+        return idContaInserida;
     }
+    
+    public void atualizarSaldoPorNumeroConta(int numeroConta, double valor) throws SQLException {
+        if (valor == 0) {
+            throw new IllegalArgumentException("Valor para atualização do saldo não pode ser zero.");
+        }
 
-    public Cliente buscarClientePorId(int id) {
-        String sql = """
-            SELECT c.id_cliente, c.nome, c.cpf, c.data_nascimento, c.telefone, c.senha, 
-                   ct.id_conta, ct.numero_conta, ct.agencia, ct.saldo, ct.tipo_conta,
-                   e.cep, e.local, e.numero_casa, e.bairro, e.cidade, e.estado
-            FROM cliente c
-            INNER JOIN conta ct ON c.id_conta = ct.id_conta
-            INNER JOIN endereco e ON c.endereco = e.id_endereco
-            WHERE c.id_cliente = ?
-        """; 
+        String sql = "UPDATE conta SET saldo = saldo + ? WHERE numero_conta = ?";
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, valor); 
+            stmt.setInt(2, numeroConta); 
 
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-
-        try {
-            conn = ConnectionFactory.getConnection();
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, id);
-            rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return mapearCliente(rs);
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected == 0) {
+                throw new SQLException("Nenhuma conta encontrada para o número " + numeroConta);
             }
         } catch (SQLException e) {
-            logger.log(System.Logger.Level.ERROR, "Erro ao buscar cliente por ID.", e);
+            throw new SQLException("Erro ao atualizar saldo da conta com número " + numeroConta, e);
+        }
+    }
+    
+ // Buscar saldo utilizando o número da conta (int)
+    public double buscarSaldoPorNumeroConta(int numeroConta) throws SQLException {
+        String sql = "SELECT saldo FROM conta WHERE numero_conta = ?";
+        double saldo = 0.0;
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, numeroConta); // Usa numeroConta como parâmetro
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    saldo = rs.getDouble("saldo"); // Obtém o saldo da conta
+                } else {
+                    throw new SQLException("Conta com número " + numeroConta + " não encontrada.");
+                }
+            }
+        } catch (SQLException e) {
+            throw new SQLException("Erro ao buscar saldo da conta com número " + numeroConta, e);
+        }
+
+        return saldo;
+    }
+
+    public int salvarCliente(Cliente cliente) {
+        String sqlUsuario = """
+            INSERT INTO usuario (nome, cpf, data_nascimento, telefone, tipo_usuario, senha) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
+        String sqlCliente = "INSERT INTO cliente (id_usuario) VALUES (?)";
+        int idUsuarioInserido = -1;
+
+        Connection conn = null; // Declare connection outside the try-with-resources block
+
+        try {
+            conn = ConnectionFactory.getConnection(); // Initialize the connection
+            conn.setAutoCommit(false);
+
+            // Save user
+            try (PreparedStatement stmtUsuario = conn.prepareStatement(sqlUsuario, Statement.RETURN_GENERATED_KEYS)) {
+                stmtUsuario.setString(1, cliente.getNome());
+                stmtUsuario.setString(2, cliente.getCpf());
+                stmtUsuario.setDate(3, Date.valueOf(cliente.getDataNascimento()));
+                stmtUsuario.setString(4, cliente.getTelefone());
+                stmtUsuario.setString(5, "CLIENTE");
+                stmtUsuario.setString(6, cliente.getSenhaHash());
+                stmtUsuario.executeUpdate();
+
+                try (ResultSet rsUsuario = stmtUsuario.getGeneratedKeys()) {
+                    if (rsUsuario.next()) {
+                        idUsuarioInserido = rsUsuario.getInt(1);
+                    }
+                }
+            }
+
+            // Save associated client
+            try (PreparedStatement stmtCliente = conn.prepareStatement(sqlCliente)) {
+                stmtCliente.setInt(1, idUsuarioInserido);
+                stmtCliente.executeUpdate();
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            logger.log(Level.ERROR, "Erro ao salvar cliente no banco de dados.", e);
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackEx) {
+                    logger.log(Level.ERROR, "Erro ao fazer rollback.", rollbackEx);
+                }
+            }
         } finally {
-            DBUtil.closeResultSet(rs);
-            DBUtil.closeStatement(stmt);
-            DBUtil.closeConnection(conn);
+            if (conn != null) {
+                try {
+                    conn.close(); // Ensure the connection is closed in the finally block
+                } catch (SQLException closeEx) {
+                    logger.log(Level.ERROR, "Erro ao fechar conexão.", closeEx);
+                }
+            }
+        }
+
+        return idUsuarioInserido;
+    }
+    
+ // Dentro de `clienteDAO.buscarClientePorCpf(cpf)`
+    public Cliente buscarClientePorCpf(String cpf) {
+        Cliente cliente = null;  // Inicializa a variável cliente
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM clientes WHERE cpf = ?")) {
+
+            stmt.setString(1, cpf);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    // Criação do objeto Cliente com os dados obtidos
+                    cliente = mapearCliente(rs);  // Utiliza o método mapearCliente
+                    System.out.println("Cliente encontrado: " + cliente.getCpf());
+                } else {
+                    System.out.println("Nenhum cliente encontrado com o CPF: " + cpf);
+                }
+
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();  // Lida com erros de conexão e execução da query
+            System.out.println("Erro ao buscar cliente pelo CPF: " + cpf);
+        }
+
+        return cliente;  // Retorna o cliente ou null caso não encontrado
+    }
+
+
+    // Dentro de `clienteDAO.buscarContasPorCliente(cpf)`
+    
+
+    // Buscar cliente por ID
+    public Cliente buscarClientePorId(int id) {
+        String sql = """
+            SELECT c.id_cliente, u.nome, u.cpf, u.data_nascimento, u.telefone, u.senha, 
+                   e.cep, e.local, e.numero_casa, e.bairro, e.cidade, e.estado
+            FROM cliente c
+            INNER JOIN usuario u ON c.id_usuario = u.id_usuario
+            LEFT JOIN endereco e ON u.id_usuario = e.id_usuario
+            WHERE c.id_cliente = ?
+        """;
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapearCliente(rs);
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.ERROR, "Erro ao buscar cliente por ID.", e);
         }
         return null;
     }
 
-    private Cliente mapearCliente(ResultSet rs) throws SQLException {
+    // Mapear resultado para um objeto Cliente
+    public Cliente mapearCliente(ResultSet rs) throws SQLException {
+        // Obtém os dados básicos do cliente
+        String nome = rs.getString("nome");
+        String cpf = rs.getString("cpf");
+        LocalDate dataNascimento = rs.getDate("data_nascimento").toLocalDate();
+        String telefone = rs.getString("telefone");
+        String senha = rs.getString("senha");
+        
+        // Validações de dados sensíveis
+        if (senha == null || senha.trim().isEmpty()) {
+            throw new IllegalArgumentException("A senha não pode ser vazia.");
+        }
+
+        // Mapeia o cliente
         Endereco endereco = new Endereco(
             rs.getString("cep"),
             rs.getString("local"),
@@ -145,51 +282,65 @@ public class ClienteDAO {
             rs.getString("estado")
         );
 
-        Conta conta = new Conta();
-        conta.setId_conta(rs.getInt("id_conta"));
-        conta.setNumeroConta(rs.getString("numero_conta"));
-        conta.setAgencia(rs.getString("agencia"));
-        conta.setSaldo(rs.getDouble("saldo"));
-        conta.setTipoConta(rs.getString("tipo_conta"));
-
-        Cliente cliente = new Cliente();
-        cliente.setId_cliente(rs.getInt("id_cliente"));
-        cliente.setNome(rs.getString("nome"));
-        cliente.setCpf(rs.getString("cpf"));
-        cliente.setDataNascimento(rs.getDate("data_nascimento").toLocalDate());
-        cliente.setTelefone(rs.getString("telefone"));
-        cliente.setEndereco(endereco);
-        cliente.setConta(conta);
-
-        endereco.setCliente(cliente);
-
-        return cliente;
+        // Retorna o objeto cliente com base no construtor definido
+        return new Cliente(nome, cpf, dataNascimento, telefone, endereco, senha, null);
     }
-    
- // Método para buscar saldo por id de cliente
-    public double buscarSaldoPorContaId(int idCliente) throws SQLException {
-        String sql = "SELECT saldo FROM conta WHERE id_cliente = ?";
-        double saldo = 0.0;
-        Connection conn = null;
 
-        try {
-            conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {  
-                stmt.setInt(1, idCliente);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        saldo = rs.getDouble("saldo");
-                    }
+
+
+
+    public double buscarSaldoPorNumeroConta(String numeroConta) throws SQLException {
+        String sql = "SELECT saldo FROM conta WHERE numero_conta = ?";
+        double saldo = 0.0;
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, numeroConta); // Substituí o idCliente pelo número da conta
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    saldo = rs.getDouble("saldo");
                 }
             }
         } catch (SQLException e) {
-            throw new SQLException("Erro ao buscar saldo da conta do cliente " + idCliente + ": " + e.getMessage(), e);
-        } finally {
-            DBUtil.closeConnection(conn);  
+            throw new SQLException("Erro ao buscar saldo da conta com número " + numeroConta, e);
         }
-
         return saldo;
     }
+    
+    public void atualizarCliente(Cliente cliente) throws SQLException {
+        // Atualização dos dados na tabela 'usuario' (tabela relacionada ao cliente)
+        String sqlUsuario = "UPDATE usuario SET nome = ?, cpf = ?, data_nascimento = ?, telefone = ?, senha = ? WHERE id_usuario  = ?";
+
+        // Inicia uma transação para garantir que a atualização seja feita com sucesso
+        try (Connection conn = DBUtil.getConnection()) {
+            // Desabilita o auto-commit para realizar a transação
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement stmtUsuario = conn.prepareStatement(sqlUsuario)) {
+                // Atualiza os dados do usuário
+                stmtUsuario.setString(1, cliente.getNome());
+                stmtUsuario.setString(2, cliente.getCpf());
+                stmtUsuario.setDate(3, Date.valueOf(cliente.getDataNascimento()));
+                stmtUsuario.setString(4, cliente.getTelefone());
+                stmtUsuario.setString(5, cliente.getSenhaHash());
+                stmtUsuario.setInt(6, cliente.getId());  // id_usuario (usando getId() que é o ID da tabela usuario)
+                stmtUsuario.executeUpdate();
+
+                // Se não houver erros, confirma a transação
+                conn.commit();
+            } catch (SQLException e) {
+                // Em caso de erro, desfaz as alterações
+                conn.rollback();
+                logger.log(Level.ERROR, "Erro ao atualizar os dados do cliente.", e);
+                throw e;  // Lança a exceção novamente para tratamento
+            }
+        } catch (SQLException e) {
+            logger.log(Level.ERROR, "Erro ao abrir conexão com o banco de dados para atualizar o cliente.", e);
+            throw e;  // Lança a exceção novamente para tratamento
+        }
+    }
+
+
 
     // Atualizar saldo de uma conta
     public void atualizarSaldo(int idCliente, double valor) throws SQLException {
@@ -197,58 +348,99 @@ public class ClienteDAO {
             throw new IllegalArgumentException("Valor para atualização do saldo não pode ser zero.");
         }
 
-        String sql = "UPDATE conta SET saldo = saldo + ? WHERE id_cliente = ?";
-        Connection conn = null;
+        String sql = "UPDATE conta SET saldo = saldo + ? WHERE numero_conta = ?";
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, valor);
+            stmt.setInt(2, idCliente);
 
-        try {
-            conn = ConnectionFactory.getConnection();  // Corrigido para obter a conexão
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setDouble(1, valor);
-                stmt.setInt(2, idCliente);
-
-                int rowsAffected = stmt.executeUpdate();
-                if (rowsAffected == 0) {
-                    throw new SQLException("Nenhuma conta encontrada para o cliente com ID " + idCliente);
-                }
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected == 0) {
+                throw new SQLException("Nenhuma conta encontrada para o cliente com ID " + idCliente);
             }
         } catch (SQLException e) {
-            throw new SQLException("Erro ao atualizar saldo da conta do cliente " + idCliente + ": " + e.getMessage(), e);
-        } finally {
-            DBUtil.closeConnection(conn);  // Fechando a conexão corretamente
+            throw new SQLException("Erro ao atualizar saldo da conta do cliente " + idCliente, e);
         }
     }
 
+    // Listar todos os clientes
     public List<Cliente> listarTodosClientes() {
         List<Cliente> clientes = new ArrayList<>();
         String sql = """
-            SELECT c.id_cliente, c.nome, c.cpf, c.data_nascimento, c.telefone, c.senha, 
-                   ct.id_conta, ct.numero_conta, ct.agencia, ct.saldo, ct.tipo_conta,
+            SELECT c.id_cliente, u.nome, u.cpf, u.data_nascimento, u.telefone, u.senha, 
                    e.cep, e.local, e.numero_casa, e.bairro, e.cidade, e.estado
             FROM cliente c
-            INNER JOIN conta ct ON c.id_conta = ct.id_conta
-            INNER JOIN endereco e ON c.endereco = e.id_endereco
-        """; 
+            INNER JOIN usuario u ON c.id_usuario = u.id_usuario
+            LEFT JOIN endereco e ON u.id_usuario = e.id_usuario
+        """;
 
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-
-        try {
-            conn = ConnectionFactory.getConnection();
-            stmt = conn.prepareStatement(sql);
-            rs = stmt.executeQuery();
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 clientes.add(mapearCliente(rs));
             }
         } catch (SQLException e) {
-            logger.log(System.Logger.Level.ERROR, "Erro ao listar todos os clientes.", e);
-        } finally {
-            DBUtil.closeResultSet(rs);
-            DBUtil.closeStatement(stmt);
-            DBUtil.closeConnection(conn);
+            logger.log(Level.ERROR, "Erro ao listar todos os clientes.", e);
         }
 
         return clientes;
     }
+
+    // Verificar se cliente existe
+    public Cliente buscarClientePorIdUsuario(int idUsuario) throws SQLException {
+        String query = "SELECT * FROM cliente WHERE id_usuario = ?";
+        Cliente cliente = null;  // Inicializa a variável cliente
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, idUsuario);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    cliente = mapearCliente(rs);  // Usa o método mapearCliente para mapear os dados do ResultSet
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();  // Lida com erros de conexão e execução da query
+            throw new SQLException("Erro ao buscar cliente pelo ID do usuário", e);
+        }
+
+        return cliente;  // Retorna o cliente ou null caso não encontrado
+    }
+    
+    public void atualizarSaldoPorIdConta(int idConta, double valor) throws SQLException {
+        String sql = "UPDATE conta SET saldo = saldo + ? WHERE id_conta = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, valor); // O valor é negativo para o saque
+            ps.setInt(2, idConta);
+            int rowsUpdated = ps.executeUpdate();
+
+            if (rowsUpdated == 0) {
+                throw new SQLException("Não foi possível atualizar o saldo para o id_conta: " + idConta);
+            }
+        }
+    }
+
+    public double buscarSaldoPorIdConta(int idConta) throws SQLException {
+        String sql = "SELECT saldo FROM conta WHERE id_conta = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, idConta);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("saldo");
+                } else {
+                    throw new SQLException("Conta não encontrada para o id_conta: " + idConta);
+                }
+            }
+        }
+    }
+
 }

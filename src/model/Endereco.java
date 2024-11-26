@@ -1,6 +1,10 @@
 package model;
 
 import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+
+import DAO.ConnectionFactory;
 
 public class Endereco implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -14,6 +18,7 @@ public class Endereco implements Serializable {
     private String estado;
     private Cliente cliente; // Relacionamento com Cliente
     private Funcionario funcionario;
+    private int idUsuario;
 
     // Construtor completo
     public Endereco(int id_endereco, String cep, String local, int numero_casa, String bairro, String cidade, String estado) {
@@ -152,4 +157,23 @@ public class Endereco implements Serializable {
     public void setFuncionario(Funcionario funcionario) {
         this.funcionario = funcionario;
     }
+    
+    public int getIdUsuario() {
+        return idUsuario;
+    }
+
+    public void setIdUsuario(int idUsuario) {
+        this.idUsuario = idUsuario;
+    }
+    
+    public void atualizarEndereco() throws Exception {
+        String sql = "UPDATE endereco SET local = ? WHERE id_usuario = ?";
+        try (Connection connection = ConnectionFactory.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, this.local);
+            stmt.setInt(2, this.idUsuario);
+            stmt.executeUpdate();
+        }
+    }
+    
 }

@@ -24,7 +24,7 @@ public class Autenticacao {
         try {
             // Recupera os dados necessários para autenticação
             UsuarioInfo usuarioInfo = usuarioDAO.buscarUsuarioPorCpf(cpf);
-
+            
             if (usuarioInfo != null) {
                 // Verifica se a senha fornecida corresponde ao hash armazenado
                 if (BCrypt.checkpw(senhaFornecida, usuarioInfo.getSenhaHash())) {

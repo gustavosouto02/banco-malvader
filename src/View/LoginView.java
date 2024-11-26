@@ -2,6 +2,14 @@ package View;
 
 import javax.swing.*;
 import service.Autenticacao; // Certifique-se de que o caminho está correto
+import service.ContaService;
+import DAO.FuncionarioDAO;
+import DAO.UsuarioDAO;
+import DAO.ClienteDAO;
+import DAO.ContaDAO;
+import controller.BancoController;
+import controller.FuncionarioController;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -12,9 +20,23 @@ public class LoginView extends JFrame {
     private JPasswordField passwordText;
     private Autenticacao autenticacao;
     private static final Logger logger = Logger.getLogger(LoginView.class.getName());
+    private final BancoController bancoController;
+    private final FuncionarioController funcionarioController;
+    private final ContaService contaService;
 
     public LoginView() {
-        autenticacao = new Autenticacao(); // Instância da classe de autenticação
+    	
+    	FuncionarioDAO funcionarioDAO = new FuncionarioDAO();
+        ContaDAO contaDAO = new ContaDAO();
+        ClienteDAO clienteDAO = new ClienteDAO();
+        
+        // Inicializa os controladores
+        bancoController = new BancoController();
+        funcionarioController = new FuncionarioController(funcionarioDAO, clienteDAO, contaDAO);
+		this.contaService = new ContaService();
+
+        // Instância da classe de autenticação
+        autenticacao = new Autenticacao(new UsuarioDAO());
 
         setTitle("Banco Malvader - Login");
         setSize(400, 300);
@@ -84,7 +106,7 @@ public class LoginView extends JFrame {
 
                 // Abrir menu correspondente
                 if (isFuncionario) {
-                    new MenuFuncionarioView(null, null).setVisible(true);
+                    new MenuFuncionarioView(bancoController, funcionarioController, contaService).setVisible(true);
                 } else {
                     new MenuClienteView().setVisible(true);
                 }

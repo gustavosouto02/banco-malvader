@@ -9,45 +9,40 @@ public class ContaCorrente extends Conta implements Serializable {
     private double limite;
     private LocalDate dataVencimento;
 
-    // Construtor da ContaCorrente
+    // Construtor completo para ContaCorrente
     public ContaCorrente(String numeroConta, String agencia, Cliente cliente, double saldo, double limite, LocalDate dataVencimento) {
-        // Passando o id_cliente da classe Cliente para o construtor de Conta
         super(numeroConta, agencia, saldo, "Corrente", cliente.getId_cliente());
+        if (limite < 0) {
+            throw new IllegalArgumentException("O limite não pode ser negativo.");
+        }
         this.limite = limite;
         this.dataVencimento = dataVencimento;
     }
 
-    // Construtor vazio para inicialização
-    public ContaCorrente() {
-        super();
-    }
-
-    // Método para consultar o limite
+    
+    // Métodos
     public double consultarLimite() {
         return limite;
     }
 
-    // Permitir saque até o limite da conta corrente
     @Override
     public void sacar(double valor) throws SaldoInsuficienteException {
         if (valor <= getSaldo()) {
-            super.sacar(valor);
+            super.sacar(valor); // Saque dentro do saldo
         } else if (valor <= getSaldo() + limite) {
             double diferenca = valor - getSaldo();
-            super.sacar(getSaldo());
-            limite -= diferenca;
+            super.sacar(getSaldo()); // Consome o saldo disponível
+            limite -= diferenca;    // Ajusta o limite
         } else {
             throw new SaldoInsuficienteException("Saldo insuficiente, inclusive o limite.");
         }
     }
 
-    // Redefinir o limite da conta
     public void redefinirLimite(double novoLimite) {
-        if (novoLimite >= 0) {
-            this.limite = novoLimite;
-        } else {
+        if (novoLimite < 0) {
             throw new IllegalArgumentException("O limite deve ser positivo.");
         }
+        this.limite = novoLimite;
     }
 
     // Getters e Setters
@@ -56,6 +51,9 @@ public class ContaCorrente extends Conta implements Serializable {
     }
 
     public void setLimite(double limite) {
+        if (limite < 0) {
+            throw new IllegalArgumentException("O limite deve ser positivo.");
+        }
         this.limite = limite;
     }
 
@@ -67,7 +65,7 @@ public class ContaCorrente extends Conta implements Serializable {
         this.dataVencimento = dataVencimento;
     }
 
-    // Representação de uma conta corrente para exibição
+    // Representação textual da ContaCorrente
     @Override
     public String toString() {
         return String.format("Conta Corrente [ID: %d, Número: %s, Agência: %s, Saldo: %.2f, Limite: %.2f, Vencimento: %s]",

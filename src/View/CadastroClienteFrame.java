@@ -27,7 +27,7 @@ public class CadastroClienteFrame extends JFrame {
     private JPasswordField senhaField;
     private JTextField dataNascimentoField;
 
-    public CadastroClienteFrame() {
+    public CadastroClienteFrame(String nome, String cpf, String telefone, String senha) {
         this.clienteDAO = new ClienteDAO();
         this.usuarioDAO = new UsuarioDAO();
 
