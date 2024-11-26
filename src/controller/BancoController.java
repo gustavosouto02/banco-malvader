@@ -1,10 +1,12 @@
 package controller;
 
 import model.*;
+import service.ContaService;
 import exception.SaldoInsuficienteException;
 import exception.ValorInvalidoException;
 import util.DataManager;
 import DAO.ConnectionFactory;
+import DAO.ContaDAO;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -16,6 +18,8 @@ public class BancoController {
     private List<Conta> contas;
     private List<Funcionario> funcionarios;
     private static final String CAMINHO_ARQUIVO_CONTAS = "contas.dat";  // Caminho do arquivo onde as contas são armazenadas
+    private ContaDAO contaDAO = new ContaDAO();	
+    private ContaService contaService = new ContaService();
 
     public BancoController() {
     	
@@ -65,21 +69,23 @@ public class BancoController {
     }
 
     public Conta consultarConta(String numeroConta) {
-        // Verifica se as contas foram carregadas corretamente
-        if (contas == null || contas.isEmpty()) {
-            System.out.println("Erro: Nenhuma conta carregada.");
+        // Primeiro verifica na lista em memória
+        for (Conta conta : contas) {
+            if (conta.getNumeroConta().equals(numeroConta)) {
+                return conta;
+            }
+        }
+
+        // Se não encontrou, verifica no banco de dados
+        try {
+            return contaDAO.buscarContaPorNumero(numeroConta);
+        } catch (SQLException e) {
+            System.out.println("Erro ao consultar conta no banco de dados: " + e.getMessage());
             return null;
         }
-        
-        System.out.println("Contas carregadas: ");
-        contas.forEach(conta -> System.out.println(conta.getNumeroConta()));  // Mostra os números das contas carregadas
-
-        // Busca pela conta
-        return contas.stream()
-                .filter(conta -> conta.getNumeroConta().equals(numeroConta))
-                .findFirst()
-                .orElse(null);
     }
+
+
 
 
     public boolean isCpfCadastrado(String cpfCliente) {
@@ -100,70 +106,158 @@ public class BancoController {
     }
 
     // Métodos de operações bancárias
-    public double consultarSaldo(String numeroConta) {
-        Conta conta = consultarConta(numeroConta);
-        return conta != null ? conta.consultarSaldo() : -1;
-    }
+    public double consultarSaldo(String numeroConta) throws SQLException {
+        Conta conta = consultarConta(numeroConta);  // Consulta na memória primeiro
 
-    public void realizarDeposito(String numeroConta, double valor) throws ValorInvalidoException {
-        Conta conta = consultarConta(numeroConta);
-        if (conta != null) {
-            conta.depositar(valor);
-            registrarTransacao("DEPOSITO", valor, numeroConta);
-            salvarDados();
-            System.out.println("Depósito realizado com sucesso.");
-        } else {
-            System.out.println("Conta não encontrada.");
+        if (conta == null) {  // Se não encontrar na memória, vai ao banco
+            conta = contaDAO.buscarContaPorNumero(numeroConta);
+            if (conta == null) {
+                throw new IllegalArgumentException("Conta não encontrada.");
+            }
         }
+        return conta.getSaldo();
     }
 
-    public void realizarSaque(String numeroConta, double valor) {
+
+
+    public void realizarDeposito(String numeroConta, double valor) throws ValorInvalidoException, SQLException {
+        // Verifica se o valor do depósito é válido (não negativo)
+        if (valor <= 0) {
+            throw new ValorInvalidoException("O valor do depósito deve ser positivo.");
+        }
+
+        // Consultar a conta pelo número
         Conta conta = consultarConta(numeroConta);
+        
         if (conta != null) {
             try {
-                conta.sacar(valor);
-                registrarTransacao("SAQUE", valor, numeroConta);
+                // Chama o método no serviço para realizar o depósito
+                contaService.realizarDeposito(conta.getNumeroConta(), valor);
+
+                // Registra a transação
+                registrarTransacao("DEPOSITO", valor, numeroConta);
+
+                // Salva os dados (se necessário)
                 salvarDados();
-                System.out.println("Saque realizado com sucesso.");
-            } catch (SaldoInsuficienteException e) {
-                System.out.println(e.getMessage());
+
+                // Imprime mensagem de sucesso
+                System.out.println("Depósito realizado com sucesso.");
+            } catch (RuntimeException e) {
+                System.out.println("Erro no sistema: " + e.getMessage());
             }
         } else {
+            System.out.println("Erro: Conta não encontrada.");
+            throw new ValorInvalidoException("Conta não encontrada.");
+        }
+    }
+
+
+    public void realizarSaque(String numeroConta, double valor) throws ValorInvalidoException {
+        // Consultar a conta pelo número
+        Conta conta = consultarConta(numeroConta);
+
+        // Verifica se a conta foi encontrada
+        if (conta != null) {
+            // Verifica se o valor do saque é válido
+            if (valor <= 0) {
+                System.out.println("O valor do saque deve ser positivo.");
+                return;
+            }
+
+            try {
+                // Chama o método no serviço para realizar o saque
+                contaService.realizarSaque(conta.getNumeroConta(), valor);
+
+                // Registra a transação de saque
+                registrarTransacao("SAQUE", valor, numeroConta);
+
+                // Salva os dados após a operação
+                salvarDados();
+
+                // Mensagem de sucesso
+                System.out.println("Saque realizado com sucesso.");
+            } catch (SaldoInsuficienteException e) {
+                // Caso ocorra erro devido ao saldo insuficiente
+                System.out.println("Erro ao realizar saque: " + e.getMessage());
+            } catch (RuntimeException e) {
+                // Caso ocorra outro erro
+                System.out.println("Erro no sistema: " + e.getMessage());
+            }
+        } else {
+            // Caso a conta não seja encontrada
             System.out.println("Conta não encontrada.");
         }
     }
 
+
+
     public void realizarTransferencia(String numeroContaOrigem, String numeroContaDestino, double valor) {
+        // Consultar as contas de origem e destino
         Conta contaOrigem = consultarConta(numeroContaOrigem);
         Conta contaDestino = consultarConta(numeroContaDestino);
 
+        // Verifica se ambas as contas foram encontradas
         if (contaOrigem != null && contaDestino != null) {
+            // Verifica se o valor da transferência é válido
+            if (valor <= 0) {
+                System.out.println("O valor da transferência deve ser positivo.");
+                return;
+            }
+
             try {
+                // Realiza o saque da conta de origem
                 contaOrigem.sacar(valor);
+
+                // Realiza o depósito na conta de destino
                 contaDestino.depositar(valor);
+
+                // Atualiza os saldos no banco
+                contaDAO.atualizarConta(contaOrigem);
+                contaDAO.atualizarConta(contaDestino);
+
+                // Registra as transações de transferência
                 registrarTransacao("TRANSFERENCIA", valor, numeroContaOrigem);
                 registrarTransacao("TRANSFERENCIA", valor, numeroContaDestino);
+
+                // Salva os dados após a operação
                 salvarDados();
+
+                // Mensagem de sucesso
                 System.out.println("Transferência realizada com sucesso.");
             } catch (SaldoInsuficienteException e) {
-                System.out.println(e.getMessage());
+                // Caso ocorra erro devido ao saldo insuficiente
+                System.out.println("Erro ao realizar transferência: " + e.getMessage());
+            } catch (SQLException e) {
+                // Caso ocorra erro ao atualizar o banco
+                System.out.println("Erro ao atualizar o banco de dados: " + e.getMessage());
             }
         } else {
+            // Caso uma das contas não seja encontrada
             System.out.println("Uma das contas não foi encontrada.");
         }
     }
+
+
 
     private void registrarTransacao(String tipoTransacao, double valor, String numeroConta) {
         String sql = "INSERT INTO transacao (tipo_transacao, valor, data_hora, id_conta) VALUES (?, ?, ?, ?)";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
+            // Define os parâmetros da transação
             stmt.setString(1, tipoTransacao);
             stmt.setDouble(2, valor);
             stmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
-            stmt.setString(4, numeroConta);
-            stmt.executeUpdate();
+            stmt.setString(4, numeroConta); // A referência da conta
 
+            // Executa o comando SQL
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("Transação registrada com sucesso.");
+            } else {
+                System.out.println("Erro: Nenhuma transação registrada.");
+            }
         } catch (SQLException e) {
             System.out.println("Erro ao registrar transação: " + e.getMessage());
         }

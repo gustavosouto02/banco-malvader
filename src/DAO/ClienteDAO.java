@@ -231,24 +231,7 @@ public class ClienteDAO {
 
 
     // Dentro de `clienteDAO.buscarContasPorCliente(cpf)`
-    public List<Conta> buscarContasPorCliente(int idCliente) throws SQLException {
-        String query = "SELECT * FROM conta WHERE id_cliente = ?";
-        List<Conta> contas = new ArrayList<>();
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, idCliente);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    Conta conta = new Conta();
-                    conta.setId_conta(rs.getInt("id_conta"));
-                    conta.setNumeroConta(rs.getString("numero_conta"));
-                    conta.setSaldo(rs.getDouble("saldo"));
-                    contas.add(conta);
-                }
-            }
-        }
-        return contas;
-    }
+    
 
     // Buscar cliente por ID
     public Cliente buscarClientePorId(int id) {

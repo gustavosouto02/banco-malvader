@@ -6,6 +6,7 @@ import controller.ContaController;
 import controller.FuncionarioController;
 import controller.BancoController;
 import service.Autenticacao;
+import service.ContaService;
 import DAO.FuncionarioDAO;
 import DAO.ClienteDAO;
 import DAO.ContaDAO;
@@ -22,16 +23,19 @@ public class BancoMalvader {
     private FuncionarioController funcionarioController;
     private ClienteController clienteController;
     private ContaController contaController;
+    private ContaService contaService;
 
     // Construtor com injeção de dependência correta
     public BancoMalvader(Autenticacao autenticacaoService,
                          FuncionarioController funcionarioController,
                          ClienteController clienteController,
-                         ContaController contaController) {
+                         ContaController contaController,
+                         ContaService contaService) {
         this.autenticacaoService = autenticacaoService;
         this.funcionarioController = funcionarioController;
         this.clienteController = clienteController;
         this.contaController = contaController;
+        this.contaService = contaService;
     }
 
     public static void main(String[] args) throws SQLException {
@@ -40,18 +44,20 @@ public class BancoMalvader {
         FuncionarioDAO funcionarioDAO = new FuncionarioDAO();
         ContaDAO contaDAO = new ContaDAO();
         ClienteDAO clienteDAO = new ClienteDAO();
+        ContaService contaService = new ContaService();
 
         // Criando as instâncias dos controladores com os DAOs necessários
         FuncionarioController funcionarioController = new FuncionarioController(funcionarioDAO, clienteDAO, contaDAO);
         ClienteController clienteController = new ClienteController(clienteDAO);
-        ContaController contaController = new ContaController(contaDAO);
+        ContaController contaController = new ContaController(contaService, contaDAO);
 
         // Criando o BancoMalvader com injeção de dependências
         BancoMalvader banco = new BancoMalvader(
             new Autenticacao(usuarioDAO), // Passando o UsuarioDAO para a Autenticacao
             funcionarioController,
             clienteController,
-            contaController
+            contaController,
+            contaService
         );
 
         banco.iniciarSistema();
@@ -72,7 +78,7 @@ public class BancoMalvader {
                 if (tipoUsuario.equals("funcionário")) {
                     BancoController bancoController = new BancoController();
 
-                    new MenuFuncionarioView(bancoController, funcionarioController).setVisible(true);
+                    new MenuFuncionarioView(bancoController, funcionarioController, contaService).setVisible(true);
                 } else {
                     // Se for cliente
                     new MenuClienteView().setVisible(true);

@@ -279,13 +279,15 @@ public class ContaDAO {
     // Mapear o tipo de conta (Corrente ou Poupança)
     private Conta mapearConta(ResultSet rs) throws SQLException {
         String tipoConta = rs.getString("tipo_conta");
+        ClienteDAO clienteDAO = new ClienteDAO(); // Instancia o ClienteDAO
+        Cliente cliente = clienteDAO.buscarClientePorId(rs.getInt("id_cliente")); // Busca o cliente pelo id_cliente
+
         if ("CORRENTE".equalsIgnoreCase(tipoConta)) {
             return new ContaCorrente(
                     rs.getString("numero_conta"),
                     rs.getString("agencia"),
+                    cliente,  // Passa o Cliente
                     rs.getDouble("saldo"),
-                    rs.getString("tipo_conta"),
-                    rs.getInt("id_cliente"),
                     rs.getDouble("limite"),
                     rs.getDate("vencimento").toLocalDate()
             );
@@ -293,13 +295,15 @@ public class ContaDAO {
             return new ContaPoupanca(
                     rs.getString("numero_conta"),
                     rs.getString("agencia"),
+                    cliente,  // Passa o Cliente
                     rs.getDouble("saldo"),
-                    rs.getInt("id_cliente")
+                    rs.getDouble("taxa_rendimento")
             );
         } else {
             throw new SQLException("Tipo de conta desconhecido: " + tipoConta);
         }
     }
+
 
     // Buscar conta por ID
     public Conta buscarContaPorId(int idConta) throws SQLException {
@@ -337,34 +341,51 @@ public class ContaDAO {
             stmt.setString(1, numeroConta);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    Conta conta = new Conta();
-                    conta.setId_conta(rs.getInt("id_conta"));
-                    conta.setNumeroConta(rs.getString("numero_conta"));
-                    conta.setAgencia(rs.getString("agencia"));
-                    conta.setSaldo(rs.getDouble("saldo"));
-                    conta.setTipoConta(rs.getString("tipo_conta"));
-                    conta.setId_cliente(rs.getInt("id_cliente"));
+                    int id_cliente = rs.getInt("id_cliente");
+                    ClienteDAO clienteDAO = new ClienteDAO();
+                    Cliente cliente = clienteDAO.buscarClientePorId(id_cliente); // Buscar o cliente associado
 
-                    // Verifica se a conta é uma conta corrente
-                    if (rs.getString("tipo_conta").equals("CORRENTE")) {
-                        ContaCorrente contaCorrente = new ContaCorrente();
-                        contaCorrente.setLimite(rs.getDouble("limite"));
-                        contaCorrente.setDataVencimento(rs.getDate("data_vencimento").toLocalDate());
-                        conta.setContaCorrente(contaCorrente); // Associa a conta corrente à conta
+                    // Verifica o tipo de conta
+                    String tipoConta = rs.getString("tipo_conta").trim().toUpperCase();
+                    if ("CORRENTE".equalsIgnoreCase(tipoConta)) {
+                        return new ContaCorrente(
+                            rs.getString("numero_conta"),
+                            rs.getString("agencia"),
+                            cliente, // Passa o cliente
+                            rs.getDouble("saldo"),
+                            rs.getDouble("limite"),
+                            rs.getDate("data_vencimento").toLocalDate()
+                        );
+                    } else if ("POUPANCA".equalsIgnoreCase(tipoConta)) {
+                        return new ContaPoupanca(
+                            rs.getString("numero_conta"),
+                            rs.getString("agencia"),
+                            cliente, // Passa o cliente
+                            rs.getDouble("saldo"),
+                            rs.getDouble("taxa_rendimento")
+                        );
                     }
-                    // Verifica se a conta é uma conta poupança
-                    else if (rs.getString("tipo_conta").equals("POUPANCA")) {
-                        ContaPoupanca contaPoupanca = new ContaPoupanca();
-                        contaPoupanca.setTaxaRendimento(rs.getDouble("taxa_rendimento"));
-                        conta.setContaPoupanca(contaPoupanca); // Associa a conta poupança à conta
-                    }
-
-                    return conta;
-                } else {
-                    return null;
                 }
+                return null; // Se não encontrar a conta
             }
+        } catch (SQLException e) {
+            e.printStackTrace(); // Log de erro, útil para depuração
+            throw new SQLException("Erro ao consultar a conta: " + e.getMessage());
         }
     }
+    
+ // Método para atualizar o saldo de uma conta
+    public void atualizarSaldo(String numeroConta, double novoSaldo) throws SQLException {
+        String query = "UPDATE conta SET saldo = ? WHERE numero_conta = ?";
+
+        // Obtém a conexão da ConnectionFactory
+        try (Connection connection = ConnectionFactory.getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setDouble(1, novoSaldo);
+            statement.setString(2, numeroConta);
+            statement.executeUpdate();
+        }
+    }
+
 
 }

@@ -23,20 +23,23 @@ import model.ContaCorrente;
 import model.ContaPoupanca;
 import model.Endereco;
 import model.Funcionario;
+import service.ContaService;
 
 public class MenuFuncionarioView extends JFrame {
 
     private static final long serialVersionUID = 1L;
     private final BancoController bancoController;
     private final FuncionarioController funcionarioController;
+    private final ContaService contaService;
     private static final String SENHA_ADMIN = "Admin123";
 
-    public MenuFuncionarioView(BancoController bancoController, FuncionarioController funcionarioController) {
+    public MenuFuncionarioView(BancoController bancoController, FuncionarioController funcionarioController, ContaService contaService) {
         if (bancoController == null || funcionarioController == null) {
             throw new IllegalArgumentException("Controladores não podem ser nulos.");
         }
         this.bancoController = bancoController;
         this.funcionarioController = funcionarioController;
+        this.contaService = contaService;
 
         // Configuração da janela
         setTitle("Menu Funcionário");
@@ -150,7 +153,8 @@ public class MenuFuncionarioView extends JFrame {
 
         try {
             if (tipoConta.equals("POUPANCA")) {
-                funcionarioController.abrirContaPoupanca(agencia, numeroConta, saldo, idCliente);
+                double taxaRendimento = Double.parseDouble(JOptionPane.showInputDialog("Taxa de rendimento (0 a 1):"));
+                funcionarioController.abrirContaPoupanca(agencia, numeroConta, saldo, idCliente, taxaRendimento);
             } else if (tipoConta.equals("CORRENTE")) {
                 double limite = Double.parseDouble(JOptionPane.showInputDialog("Limite:"));
                 LocalDate vencimento = LocalDate.parse(JOptionPane.showInputDialog("Vencimento (yyyy-MM-dd):"));
@@ -163,28 +167,33 @@ public class MenuFuncionarioView extends JFrame {
         }
     }
 
+
  // Método para encerrar conta pelo número
     private void encerrarConta() throws Exception {
         String numeroConta = JOptionPane.showInputDialog("Número da conta para encerrar:");
 
         try {
+            // Verifica se o número da conta é válido
             if (numeroConta == null || numeroConta.trim().isEmpty()) {
                 JOptionPane.showMessageDialog(this, "O número da conta não pode ser vazio.");
                 return;
             }
 
-            // Criando uma instância de ContaDAO para passar ao ContaController
-            ContaDAO contaDAO = new ContaDAO();
-            ContaController contaController = new ContaController(contaDAO);  // Passando o ContaDAO ao construtor
+            // Chama o método do ContaService para encerrar a conta
+            contaService.encerrarConta(numeroConta); // Passando o número da conta diretamente
 
-            // Chama o método para encerrar a conta
-            contaController.encerrarConta(numeroConta);
-
+            // Exibe a mensagem de sucesso
             JOptionPane.showMessageDialog(this, "Conta com número " + numeroConta + " encerrada com sucesso!");
+
         } catch (SQLException ex) {
+            // Tratamento de erro com SQLException
             JOptionPane.showMessageDialog(this, "Erro ao encerrar conta: " + ex.getMessage());
         } catch (IllegalArgumentException ex) {
+            // Tratamento de erro com IllegalArgumentException
             JOptionPane.showMessageDialog(this, "Erro: " + ex.getMessage());
+        } catch (Exception ex) {
+            // Tratamento genérico para outras exceções
+            JOptionPane.showMessageDialog(this, "Erro inesperado: " + ex.getMessage());
         }
     }
 
@@ -222,21 +231,20 @@ public class MenuFuncionarioView extends JFrame {
 
     private void consultarConta() throws SQLException {
         try {
-            // Solicita o ID da conta ao funcionário
-            String input = JOptionPane.showInputDialog("Digite o ID da conta:");
+            // Solicita o número da conta ao funcionário
+            String input = JOptionPane.showInputDialog("Digite o número da conta:");
             if (input == null || input.trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "ID da conta não pode ser vazio.");
+                JOptionPane.showMessageDialog(this, "Número da conta não pode ser vazio.");
                 return;
             }
 
-            int idConta = Integer.parseInt(input);
-
             // Instancia o DAO e o Controller para buscar a conta
-            ContaDAO contaDAO = new ContaDAO();  
-            ContaController contaController = new ContaController(contaDAO);  
+            ContaDAO contaDAO = new ContaDAO();  // Use sua conexão de banco de dados
+            ContaService contaService = new ContaService();
+            ContaController contaController = new ContaController(contaService, contaDAO);  
 
-            // Busca a conta pelo ID
-            Conta conta = contaController.buscarConta(idConta);
+            // Busca a conta pelo número
+            Conta conta = contaController.buscarContaPorNumero(input);
 
             if (conta != null) {
                 // Monta uma mensagem com as informações básicas da conta
@@ -262,11 +270,12 @@ public class MenuFuncionarioView extends JFrame {
                 JOptionPane.showMessageDialog(this, "Conta não encontrada.");
             }
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Por favor, insira um ID de conta válido.");
+            JOptionPane.showMessageDialog(this, "Por favor, insira um número de conta válido.");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Erro inesperado: " + ex.getMessage());
         }
     }
+
 
 
     private void consultarFuncionario() {
@@ -689,7 +698,8 @@ public class MenuFuncionarioView extends JFrame {
             ContaDAO contaDAO = new ContaDAO();
             ClienteDAO clienteDAO = new ClienteDAO();
             FuncionarioController funcionarioController = new FuncionarioController(funcionarioDAO, clienteDAO, contaDAO);
-            MenuFuncionarioView frame = new MenuFuncionarioView(bancoController, funcionarioController);
+            ContaService contaService = new ContaService();
+            MenuFuncionarioView frame = new MenuFuncionarioView(bancoController, funcionarioController, contaService);
             frame.setVisible(true);
         });
     }

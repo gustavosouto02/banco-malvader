@@ -13,10 +13,11 @@ public class ContaController {
     private ContaService contaService;
     private ContaDAO contaDAO;
 
-    public ContaController(ContaDAO contaDAO) {
-        this.contaService = new ContaService();
-        this.contaDAO = new ContaDAO();
+    public ContaController(ContaService contaService, ContaDAO contaDAO) {
+        this.contaService = contaService;
+        this.contaDAO = contaDAO;
     }
+
 
     // Método para criar uma nova conta
     public void criarConta(Conta conta) {
@@ -47,6 +48,10 @@ public class ContaController {
             System.out.println("Erro ao buscar conta: " + e.getMessage());
             return null;
         }
+    }
+    
+    public Conta buscarContaPorNumero(String numeroConta) throws SQLException {
+        return contaDAO.buscarContaPorNumero(numeroConta); // Busca no banco de dados pelo número
     }
 
     // Método para atualizar os dados de uma conta
@@ -81,9 +86,9 @@ public class ContaController {
 
 
     // Método para realizar saque em uma conta
-    public void realizarSaque(int idConta, double valor) {
+    public void realizarSaque(String numeroConta, double valor) {
         try {
-            contaService.realizarSaque(idConta, valor);
+            contaService.realizarSaque(numeroConta, valor);
             System.out.println("Saque realizado com sucesso!");
         } catch (SaldoInsuficienteException | ValorInvalidoException e) {
             System.out.println("Erro ao realizar saque: " + e.getMessage());
@@ -93,9 +98,9 @@ public class ContaController {
     }
 
     // Método para realizar depósito em uma conta
-    public void realizarDeposito(int idConta, double valor) {
+    public void realizarDeposito(String numeroConta, double valor) {
         try {
-            contaService.realizarDeposito(idConta, valor);
+            contaService.realizarDeposito(numeroConta, valor);
             System.out.println("Depósito realizado com sucesso!");
         } catch (ValorInvalidoException e) {
             System.out.println("Erro ao realizar depósito: " + e.getMessage());

@@ -3,8 +3,13 @@ package model;
 import exception.SaldoInsuficienteException;
 
 import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import DAO.ClienteDAO;
+import DAO.ConnectionFactory;
 
 public class Conta implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -25,10 +30,6 @@ public class Conta implements Serializable {
         this.saldo = saldo;
         this.tipoConta = tipoConta;
         this.id_cliente = id_cliente;
-    }
-
-    // Construtor vazio para inicialização
-    public Conta() {
     }
 
     // Getter e Setter para id_conta
@@ -146,6 +147,83 @@ public class Conta implements Serializable {
 	        throw new IllegalArgumentException("Conta Poupança inválida ou taxa de rendimento negativa.");
 	    }
 	}
+	
+	public void atualizarConta(Conta conta) throws SQLException {
+	    String query = "UPDATE conta SET saldo = ? WHERE numero_conta = ?";
+
+	    // Estabelecendo a conexão
+	    try (Connection connection = ConnectionFactory.getConnection()) {
+	        // Desativando o autocommit para controle manual da transação
+	        connection.setAutoCommit(false);
+
+	        try (PreparedStatement statement = connection.prepareStatement(query)) {
+	            // Definindo os parâmetros da query
+	            statement.setDouble(1, conta.getSaldo());  // Atualiza o saldo da conta
+	            statement.setString(2, conta.getNumeroConta());  // Identifica a conta pelo número
+
+	            // Executando a query
+	            int rowsAffected = statement.executeUpdate();
+
+	            // Verificando se nenhuma linha foi afetada
+	            if (rowsAffected == 0) {
+	                throw new SQLException("Erro ao atualizar saldo: nenhuma linha foi afetada.");
+	            }
+
+	            // Comitando a transação, caso tenha sido bem-sucedido
+	            connection.commit();
+	        } catch (SQLException e) {
+	            // Realizando rollback caso ocorra algum erro
+	            connection.rollback();
+	            throw new SQLException("Erro ao atualizar a conta no banco.", e);
+	        } finally {
+	            // Garantindo que o autocommit será restaurado após a operação
+	            connection.setAutoCommit(true);
+	        }
+	    } catch (SQLException e) {
+	        // Caso haja erro na conexão ou preparação da statement
+	        throw new SQLException("Erro ao conectar ao banco ou preparar a query.", e);
+	    }
+	}
+
+	 
+	 public Conta buscarContaPorId(int contaId) throws SQLException {
+	        String query = "SELECT * FROM conta WHERE id_conta = ?";
+	        try (Connection connection = ConnectionFactory.getConnection();
+	             PreparedStatement statement = connection.prepareStatement(query)) {
+	            statement.setInt(1, contaId);
+	            ResultSet resultSet = statement.executeQuery();
+
+	            if (resultSet.next()) {
+	                String numeroConta = resultSet.getString("numero_conta");
+	                String agencia = resultSet.getString("agencia");
+	                double saldo = resultSet.getDouble("saldo");
+	                String tipoConta = resultSet.getString("tipo_conta");
+	                int idCliente = resultSet.getInt("id_cliente");
+
+	                return new Conta(numeroConta, agencia, saldo, tipoConta, idCliente);
+	            }
+	            return null;  // Conta não encontrada
+	        }
+	    }
+
+	    public Conta buscarContaPorNumero(String numeroConta) throws SQLException {
+	        String query = "SELECT * FROM conta WHERE numero_conta = ?";
+	        try (Connection connection = ConnectionFactory.getConnection();
+	             PreparedStatement statement = connection.prepareStatement(query)) {
+	            statement.setString(1, numeroConta);
+	            ResultSet resultSet = statement.executeQuery();
+
+	            if (resultSet.next()) {
+	                String agencia = resultSet.getString("agencia");
+	                double saldo = resultSet.getDouble("saldo");
+	                String tipoConta = resultSet.getString("tipo_conta");
+	                int idCliente = resultSet.getInt("id_cliente");
+
+	                return new Conta(numeroConta, agencia, saldo, tipoConta, idCliente);
+	            }
+	            return null;  // Conta não encontrada
+	        }
+	    }
 
 
 }
