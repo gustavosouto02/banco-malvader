@@ -15,6 +15,8 @@ public class Conta implements Serializable {
     private double saldo;
     private String tipoConta;
     private int id_cliente; // Relação com o cliente
+    private ContaCorrente contaCorrente;  // Para armazenar a conta corrente
+    private ContaPoupanca contaPoupanca;  // Para armazenar a conta poupança
 
     // Construtor com todos os parâmetros
     public Conta(String numeroConta, String agencia, double saldo, String tipoConta, int id_cliente) {
@@ -92,19 +94,29 @@ public class Conta implements Serializable {
     // Método para exibir informações gerais da conta
     @Override
     public String toString() {
+        String tipoDetalhado = tipoConta;
+        if (contaCorrente != null) {
+            tipoDetalhado = "Conta Corrente (Limite: " + contaCorrente.getLimite() + ")";
+        } else if (contaPoupanca != null) {
+            tipoDetalhado = "Conta Poupança (Taxa de Rendimento: " + contaPoupanca.getTaxaRendimento() + "%)";
+        }
         return String.format("Conta [ID: %d, Número: %s, Agência: %s, Saldo: %.2f, Tipo: %s]",
-                id_conta, numeroConta, agencia, saldo, tipoConta);
+                id_conta, numeroConta, agencia, saldo, tipoDetalhado);
     }
+
 
     public void sacar(double valor) throws SaldoInsuficienteException {
         // Verifica se o valor solicitado é maior que o saldo disponível
         if (valor > saldo) {
-            // Se o valor for maior que o saldo, lança a exceção
-            throw new SaldoInsuficienteException("Saldo insuficiente para realizar o saque.");
+            // Para contas correntes, verifica se o limite permite o saque
+            if (contaCorrente != null && (saldo + contaCorrente.getLimite()) >= valor) {
+                saldo -= valor;  // Permite o saque se o limite da conta corrente for suficiente
+            } else {
+                throw new SaldoInsuficienteException("Saldo insuficiente para realizar o saque.");
+            }
+        } else {
+            saldo -= valor; // Decrementa o saldo da conta com o valor do saque
         }
-        
-        // Se o saldo for suficiente, realiza o saque
-        saldo -= valor; // Decrementa o saldo da conta com o valor do saque
     }
 
     public void depositar(double valor) {
@@ -118,4 +130,22 @@ public class Conta implements Serializable {
 	public double consultarSaldo() {
 		return saldo;
 	}
+
+	public void setContaCorrente(ContaCorrente contaCorrente) {
+	    if (contaCorrente != null && contaCorrente.getLimite() >= 0) {
+	        this.contaCorrente = contaCorrente;
+	    } else {
+	        throw new IllegalArgumentException("Conta Corrente inválida ou limite negativo.");
+	    }
+	}
+
+	public void setContaPoupanca(ContaPoupanca contaPoupanca) {
+	    if (contaPoupanca != null && contaPoupanca.getTaxaRendimento() >= 0) {
+	        this.contaPoupanca = contaPoupanca;
+	    } else {
+	        throw new IllegalArgumentException("Conta Poupança inválida ou taxa de rendimento negativa.");
+	    }
+	}
+
+
 }

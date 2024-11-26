@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import DAO.ConnectionFactory;
+
 public class DBUtil {
 
     // Método para fechar a conexão
@@ -40,7 +42,13 @@ public class DBUtil {
         }
     }
 
-	public static Connection getConnection() {
-		return null;
-	}
+    public static Connection getConnection() {
+        try {
+            return ConnectionFactory.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;  // Retorna null caso haja erro, mas é bom logar a exceção ou tratá-la adequadamente
+        }
+    }
+
 }

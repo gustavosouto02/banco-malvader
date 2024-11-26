@@ -3,12 +3,9 @@ package View;
 import javax.swing.*;
 import controller.BancoController;
 import model.Conta;
-import model.Cliente;
-import model.Endereco;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.time.LocalDate;
 
 public class AberturaDeContaScreen extends JFrame {
 
@@ -42,7 +39,7 @@ public class AberturaDeContaScreen extends JFrame {
 
         // Campos da conta
         JLabel numeroContaLabel = new JLabel("Número da Conta:");
-        JTextField numeroContaField = new JTextField();
+        JTextField numeroContaField = new JTextField();  // Mudando para JTextField (String)
         panel.add(numeroContaLabel);
         panel.add(numeroContaField);
 
@@ -64,16 +61,13 @@ public class AberturaDeContaScreen extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
                     // Captura os dados do formulário
-                    String nomeCliente = nomeField.getText();
                     String cpfCliente = cpfField.getText();
-                    String enderecoClienteStr = enderecoField.getText();
-                    String numeroContaText = numeroContaField.getText();
+                    String numeroContaText = numeroContaField.getText(); // Alterando para String
                     String saldoInicialText = saldoField.getText();
                     String tipoConta = (String) tipoContaCombo.getSelectedItem();
 
                     // Validações
-                    if (nomeCliente.isEmpty() || cpfCliente.isEmpty() || enderecoClienteStr.isEmpty()
-                            || numeroContaText.isEmpty() || saldoInicialText.isEmpty()) {
+                    if (cpfCliente.isEmpty() || numeroContaText.isEmpty() || saldoInicialText.isEmpty()) {
                         JOptionPane.showMessageDialog(null, "Todos os campos devem ser preenchidos!");
                         return;
                     }
@@ -83,21 +77,18 @@ public class AberturaDeContaScreen extends JFrame {
                         return;
                     }
 
-                    double saldoInicial = Double.parseDouble(saldoInicialText);
-
-                    if (bancoController.isCpfCadastrado(cpfCliente)) {
-                        JOptionPane.showMessageDialog(null, "CPF já registrado!");
+                    if (!bancoController.isCpfCadastrado(cpfCliente)) {
+                        JOptionPane.showMessageDialog(null, "Cliente não encontrado!");
                         return;
                     }
 
-                    // Cria os objetos baseados nos dados fornecidos
-                    Endereco endereco = Endereco.fromString(enderecoClienteStr);
-                    Cliente cliente = new Cliente(nomeCliente, cpfCliente, LocalDate.now(), "999999999", endereco, "senha123", null);
+                    double saldoInicial = Double.parseDouble(saldoInicialText);
+
+                    // Cria a nova conta com número de conta como String
                     Conta novaConta = new Conta(numeroContaText, "1234", saldoInicial, tipoConta, 0);
-                    cliente.setConta(novaConta);
-                    
-                    // Chama o controlador para persistir no banco
-                    bancoController.cadastrarClienteComConta(cliente, novaConta);
+
+                    // Chama o controlador para cadastrar a conta
+                    bancoController.cadastrarConta(novaConta, cpfCliente);
 
                     JOptionPane.showMessageDialog(null, "Conta criada com sucesso!");
                     dispose();

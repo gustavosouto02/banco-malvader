@@ -6,12 +6,18 @@ public class ContaPoupanca extends Conta implements Serializable {
     private static final long serialVersionUID = 1L;
     private double taxaRendimento;
 
-    // Construtor da ContaPoupanca
+    // Construtor completo (compatível com ContaDAO)
+    public ContaPoupanca(String numeroConta, String agencia, double saldo, int idCliente) {
+        super(numeroConta, agencia, saldo, "Poupança", idCliente);
+        this.taxaRendimento = 0.05; // Valor padrão para taxa de rendimento
+    }
+
+
+    // Construtor completo (original)
     public ContaPoupanca(String numeroConta, String agencia, Cliente cliente, double saldo, double taxaRendimento) {
-        // Chamando o construtor da classe pai Conta e passando o id_cliente do Cliente
         super(numeroConta, agencia, saldo, "Poupança", cliente.getId_cliente());
         if (taxaRendimento < 0 || taxaRendimento > 1) {
-            throw new IllegalArgumentException("A taxa de rendimento deve ser entre 0 e 1.");
+            throw new IllegalArgumentException("A taxa de rendimento deve estar entre 0 e 1.");
         }
         this.taxaRendimento = taxaRendimento;
     }
@@ -21,9 +27,9 @@ public class ContaPoupanca extends Conta implements Serializable {
         super();
     }
 
-    // Método para calcular o rendimento da conta poupança
+    // Métodos
     public double calcularRendimento() {
-        return getSaldo() * taxaRendimento; // saldo herdado da classe Conta
+        return getSaldo() * taxaRendimento;
     }
 
     // Getters e Setters
@@ -33,12 +39,12 @@ public class ContaPoupanca extends Conta implements Serializable {
 
     public void setTaxaRendimento(double taxaRendimento) {
         if (taxaRendimento < 0 || taxaRendimento > 1) {
-            throw new IllegalArgumentException("A taxa de rendimento deve ser entre 0 e 1.");
+            throw new IllegalArgumentException("A taxa de rendimento deve estar entre 0 e 1.");
         }
         this.taxaRendimento = taxaRendimento;
     }
 
-    // Representação de uma conta poupança para exibição
+    // Representação textual da ContaPoupança
     @Override
     public String toString() {
         return String.format("Conta Poupança [ID: %d, Número: %s, Agência: %s, Saldo: %.2f, Taxa de Rendimento: %.2f]",

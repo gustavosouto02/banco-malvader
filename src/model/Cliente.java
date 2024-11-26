@@ -9,15 +9,14 @@ public class Cliente extends Usuario implements Serializable {
     private Conta conta;
 
     public Cliente(String nome, String cpf, LocalDate dataNascimento, String telefone, Endereco endereco, String senha, Conta conta) {
-        // Não passa o id_cliente para o super, pois ele será gerado automaticamente após a inserção
         super(nome, cpf, dataNascimento, telefone, senha, endereco);
         this.conta = conta;
     }
-
+/*
     public Cliente() {
-        super("", "", null, "", "", null);  // Inicializa com valores vazios
+        super("Desconhecido", "", null, "", "", null);  // Inicializa com valores vazios
     }
-
+*/
     @Override
     public Usuario getUsuario() {
         return this;
@@ -64,4 +63,14 @@ public class Cliente extends Usuario implements Serializable {
                 endereco != null ? endereco.toString() : "Endereço não disponível",
                 conta != null ? conta.getNumeroConta() : "Sem conta");
     }
+    
+    public void setUsuario(Usuario usuario) {
+        this.setNome(usuario.getNome());
+        this.setCpf(usuario.getCpf());
+        this.setDataNascimento(usuario.getDataNascimento());
+        this.setTelefone(usuario.getTelefone());
+        this.setEndereco(usuario.getEndereco());
+        // Outros campos de Usuario, se necessário
+    }
+
 }

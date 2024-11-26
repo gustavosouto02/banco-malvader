@@ -42,17 +42,18 @@ public abstract class Usuario implements Serializable {
         this.endereco = endereco;
     }
 
-    // Método para gerar o hash da senha
-    private String gerarHashSenha(String senha) {
+    protected String gerarHashSenha(String senha) {
+        if (senha == null || senha.isEmpty()) {
+            throw new IllegalArgumentException("A senha não pode ser nula ou vazia.");
+        }
         return BCrypt.hashpw(senha, BCrypt.gensalt());
     }
 
-    // Método de login: valida a senha fornecida comparando com o hash armazenado
     public boolean login(String senha) {
         if (senha == null || senha.trim().isEmpty()) {
             throw new IllegalArgumentException("A senha não pode ser vazia.");
         }
-        return BCrypt.checkpw(senha, senhaHash);
+        return BCrypt.checkpw(senha, this.senhaHash);
     }
 
     // Método de logout

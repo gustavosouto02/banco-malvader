@@ -15,8 +15,10 @@ public class BancoController {
 
     private List<Conta> contas;
     private List<Funcionario> funcionarios;
+    private static final String CAMINHO_ARQUIVO_CONTAS = "contas.dat";  // Caminho do arquivo onde as contas são armazenadas
 
     public BancoController() {
+    	
         this.contas = new ArrayList<>();
         this.funcionarios = new ArrayList<>();
         carregarDados();
@@ -63,11 +65,22 @@ public class BancoController {
     }
 
     public Conta consultarConta(String numeroConta) {
+        // Verifica se as contas foram carregadas corretamente
+        if (contas == null || contas.isEmpty()) {
+            System.out.println("Erro: Nenhuma conta carregada.");
+            return null;
+        }
+        
+        System.out.println("Contas carregadas: ");
+        contas.forEach(conta -> System.out.println(conta.getNumeroConta()));  // Mostra os números das contas carregadas
+
+        // Busca pela conta
         return contas.stream()
-            .filter(conta -> conta.getNumeroConta().equals(numeroConta))
-            .findFirst()
-            .orElse(null);
+                .filter(conta -> conta.getNumeroConta().equals(numeroConta))
+                .findFirst()
+                .orElse(null);
     }
+
 
     public boolean isCpfCadastrado(String cpfCliente) {
         String sql = "SELECT COUNT(*) FROM cliente WHERE cpf = ?";
@@ -156,22 +169,68 @@ public class BancoController {
         }
     }
 
-    // Métodos para relatórios e consultas
-    public void gerarRelatorios() {
+    public void gerarRelatorios(List<Conta> contas) {
+        // Carregar os dados dos funcionários
+        List<Funcionario> funcionarios = carregarFuncionarios();
+
+        // Construir o conteúdo do relatório incluindo as contas e funcionários
+        StringBuilder conteudoRelatorio = new StringBuilder();
+        conteudoRelatorio.append("Detalhes do Relatório Geral com Informações de Contas e Funcionários.\n\n");
+
+        // Adiciona detalhes das contas
+        conteudoRelatorio.append("Contas:\n");
+        for (Conta conta : contas) {
+            conteudoRelatorio.append(conta.toString()).append("\n");
+        }
+
+        // Adiciona detalhes dos funcionários
+        conteudoRelatorio.append("\nFuncionários:\n");
+        for (Funcionario funcionario : funcionarios) {
+            conteudoRelatorio.append(funcionario.toString()).append("\n");
+        }
+
+        // Cria o relatório
         Relatorio relatorio = new Relatorio(
-            "Relatório Geral",
-            LocalDateTime.now(),
-            "Detalhes do relatório..."
+            "Relatório Geral",  // Tipo do Relatório
+            LocalDateTime.now(),  // Data de Geração
+            conteudoRelatorio.toString(),  // Conteúdo do Relatório
+            contas  // Lista de contas associadas
         );
+
+        // Gera o relatório em formato CSV
         relatorio.gerarRelatorioGeral();
     }
 
-    public void exportarRelatorioParaExcel() {
+    // Método para exportar o relatório para Excel
+    public void exportarRelatorioParaExcel(List<Conta> contas) {
+        // Carregar os dados dos funcionários
+        List<Funcionario> funcionarios = carregarFuncionarios();
+
+        // Construir o conteúdo do relatório para exportação
+        StringBuilder conteudoRelatorio = new StringBuilder();
+        conteudoRelatorio.append("Detalhes da Exportação de Relatório com Dados de Contas e Funcionários.\n\n");
+
+        // Adiciona detalhes das contas
+        conteudoRelatorio.append("Contas:\n");
+        for (Conta conta : contas) {
+            conteudoRelatorio.append(conta.toString()).append("\n");
+        }
+
+        // Adiciona detalhes dos funcionários
+        conteudoRelatorio.append("\nFuncionários:\n");
+        for (Funcionario funcionario : funcionarios) {
+            conteudoRelatorio.append(funcionario.toString()).append("\n");
+        }
+
+        // Cria o relatório
         Relatorio relatorio = new Relatorio(
-            "Exportação Relatório",
-            LocalDateTime.now(),
-            "Conteúdo de exportação..."
+            "Exportação Relatório",  // Tipo do Relatório
+            LocalDateTime.now(),  // Data de Geração
+            conteudoRelatorio.toString(),  // Conteúdo do Relatório
+            contas  // Lista de contas associadas
         );
+
+        // Exporta o relatório para Excel (no caso, CSV)
         relatorio.exportarParaExcel();
     }
 
@@ -218,8 +277,49 @@ public class BancoController {
         funcionarios.forEach(System.out::println);
     }
 
-	public void cadastrarClienteComConta(Cliente cliente, Conta novaConta) {
-		// TODO Auto-generated method stub
-		
-	}
+    public void cadastrarConta(Conta novaConta, String cpfCliente) {
+        String sqlConta = "INSERT INTO conta (numero_conta, agencia, saldo, tipo, cpf_cliente) VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sqlConta)) {
+
+            // Verifica se o cliente existe antes de criar a conta
+            if (!isCpfCadastrado(cpfCliente)) {
+                throw new IllegalArgumentException("Cliente não encontrado no sistema.");
+            }
+
+            // Insere a nova conta no banco
+            stmt.setString(1, novaConta.getNumeroConta());
+            stmt.setString(2, novaConta.getAgencia());
+            stmt.setDouble(3, novaConta.getSaldo());
+            stmt.setString(4, novaConta.getTipoConta());
+            stmt.setString(5, cpfCliente);
+            stmt.executeUpdate();
+
+            System.out.println("Conta cadastrada com sucesso para o cliente com CPF: " + cpfCliente);
+        } catch (SQLException e) {
+            System.out.println("Erro ao cadastrar conta: " + e.getMessage());
+        }
+    }
+
+    public List<Conta> obterContas() {
+        // Usa o DataManager para carregar as contas de um arquivo
+        List<Conta> contas = DataManager.carregarContas(CAMINHO_ARQUIVO_CONTAS);
+        
+        if (contas.isEmpty()) {
+            System.out.println("Nenhuma conta encontrada no arquivo.");
+        }
+        
+        return contas;
+    }
+    public List<Funcionario> carregarFuncionarios() {
+        List<Funcionario> funcionarios = DataManager.carregarFuncionarios("funcionarios.dat");
+        if (funcionarios == null || funcionarios.isEmpty()) {
+            // Caso o arquivo não exista ou esteja vazio, cria uma lista vazia de funcionários
+            System.out.println("Nenhum funcionário encontrado. Criando lista vazia.");
+            funcionarios = new ArrayList<>();
+        }
+        return funcionarios;
+    }
+
 }
